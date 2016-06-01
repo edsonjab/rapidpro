@@ -46,9 +46,9 @@ POSTGRES_PORT = int(os.getenv('POSTGRES_PORT_5432_TCP_PORT'))
 # if your site was at http://temba.io, it might look like this:
 # -----------------------------------------------------------------------------------
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'server@temba.io'
-DEFAULT_FROM_EMAIL = 'server@temba.io'
-EMAIL_HOST_PASSWORD = 'mypassword'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 
 # where recordings and exports are stored
@@ -82,8 +82,8 @@ LANGUAGES = (
     ('fr', _("French")),
     ('es', _("Spanish")))
 
-DEFAULT_LANGUAGE = "en-us"
-DEFAULT_SMS_LANGUAGE = "en-us"
+DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE')
+DEFAULT_SMS_LANGUAGE = os.getenv('DEFAULT_LANGUAGE')
 
 SITE_ID = 1
 
@@ -1060,7 +1060,7 @@ MAGE_AUTH_TOKEN = '___MAGE_TOKEN_YOU_PICK__'
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause messages to be sent to live customer aggregators
-SEND_MESSAGES = False
+SEND_MESSAGES = os.getenv('SEND_MESSAGES')
 
 ######
 # DANGER: only turn this on if you know what you are doing!
