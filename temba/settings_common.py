@@ -1070,7 +1070,7 @@ SEND_WEBHOOKS = False
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause emails to be sent in test environment
-SEND_EMAILS = False
+SEND_EMAILS = os.getenv('SEND_MAIL')
 
 MESSAGE_HANDLERS = ['temba.triggers.handlers.TriggerHandler',
                     'temba.flows.handlers.FlowHandler',
