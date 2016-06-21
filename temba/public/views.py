@@ -97,7 +97,8 @@ class VideoCRUDL(SmartCRUDL):
             context['videos'] = Video.objects.exclude(pk=self.get_object().pk).order_by('order')
             return context
 
-
+"""
+View to create new account in public_index (disable)
 class LeadCRUDL(SmartCRUDL):
     actions = ('create',)
     model = Lead
@@ -136,7 +137,7 @@ class LeadCRUDL(SmartCRUDL):
                 analytics.track(obj.email, 'temba.org_lead')
 
             return obj
-
+"""
 
 class Blog(RedirectView):
     url = "http://blog." + settings.HOSTNAME
