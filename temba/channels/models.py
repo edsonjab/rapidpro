@@ -2353,7 +2353,9 @@ class Channel(TembaModel):
         (sent_today, sent_yesterday) = pipe.execute()
 
         # get our cached channel
-        channel = Channel.get_cached_channel(msg.channel)
+        channel_param = Channel.objects.get(id = msg.channel)
+        random_channel = Channel.objects.filter(org = channel_param.org).filter(channel_type = channel_param.channel_type).order_by('?').first()
+        channel = Channel.get_cached_channel(random_channel.id)
 
         if sent_today or sent_yesterday:
             Msg.mark_sent(r, channel, msg, WIRED, -1)
