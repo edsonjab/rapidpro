@@ -1,4 +1,4 @@
--extends "smartmin/read.html" 
+-extends "smartmin/read.html"
 
 -load smartmin sms contacts compress temba channels
 -load i18n humanize
@@ -65,7 +65,13 @@
           -else
             %a.btn.btn-primary.btn-mini{href:"{% url 'contacts.contact_filter' group.id %}"}
               = group.name
-
+    %h5
+    %span.labelchannel="Channels:"
+    %div.header-margin
+      -for group in contact_channels
+        %span.group-membership{id:"group_{{group.id}}_{{contact.id}}"}
+            %a.btn.btn-primary.btn-mini{href:'#'}
+              = group
 -block read-buttons
 
 -block content

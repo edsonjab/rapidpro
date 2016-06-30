@@ -10,7 +10,9 @@
       $('#id_groups').select2({
         containerCssClass: "select2-temba-field"
       });
-
+      $('#id_channels').select2({
+        containerCssClass: "select2-temba-field"
+      });
       $('#id-urn-scheme').select2({width:'150px', minimumResultsForSearch: -1})
 
       select2div('#id_language', '520px', 'No preference')
@@ -99,4 +101,3 @@
 
 -block summary
   {{ contact }}
-

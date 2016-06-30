@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from itertools import chain
+from temba.channels.models import Channel
 from smartmin.csv_imports.models import ImportTask
 from smartmin.views import SmartCreateView, SmartCRUDL, SmartCSVImportView, SmartDeleteView, SmartFormView
 from smartmin.views import SmartListView, SmartReadView, SmartUpdateView, SmartXlsView, smart_url
@@ -293,6 +294,9 @@ class UpdateContactForm(ContactForm):
     groups = forms.ModelMultipleChoiceField(queryset=ContactGroup.user_groups.filter(pk__lt=0),
                                             required=False, label=_("Groups"),
                                             help_text=_("Add or remove groups this contact belongs to"))
+    channels = forms.ModelMultipleChoiceField(queryset=Channel.objects.all() ,
+                                            required=False, label=_("Canales"),
+                                            help_text=_("Add or remove groups this contact belongs to"))
 
     def __init__(self, *args, **kwargs):
         super(UpdateContactForm, self).__init__(*args, **kwargs)
@@ -308,7 +312,9 @@ class UpdateContactForm(ContactForm):
         choices += [(l.iso_code, l.name) for l in self.instance.org.languages.all().order_by('orgs', 'name')]
 
         self.fields['language'] = forms.ChoiceField(required=False, label=_('Language'), initial=self.instance.language, choices=choices)
-
+        self.fields['channels'].initial = self.instance.user_channels.all()
+        self.fields['channels'].queryset = Channel.objects.filter(org= self.user.get_org())
+        self.fields['channels'].help_text= _("The channels which this contacts belongs to")
         self.fields['groups'].initial = self.instance.user_groups.all()
         self.fields['groups'].queryset = ContactGroup.user_groups.filter(org=self.user.get_org(), is_active=True)
         self.fields['groups'].help_text = _("The groups which this contact belongs to")
@@ -370,7 +376,6 @@ class ContactCRUDL(SmartCRUDL):
             return HttpResponseRedirect(reverse('contacts.contact_list'))
 
     class Customize(OrgPermsMixin, SmartUpdateView):
-
         class CustomizeForm(forms.ModelForm):
             def clean(self):
 
@@ -659,6 +664,8 @@ class ContactCRUDL(SmartCRUDL):
 
             # the users group membership
             context['contact_groups'] = contact.user_groups.extra(select={'lower_name': 'lower(name)'}).order_by('lower_name')
+            context['contact_channels'] = contact.user_channels
+
 
             # event fires
             event_fires = contact.fire_events.filter(scheduled__gte=timezone.now()).order_by('scheduled')
@@ -1031,7 +1038,16 @@ class ContactCRUDL(SmartCRUDL):
 
         def save(self, obj):
             super(ContactCRUDL.Update, self).save(obj)
-
+            last_channels = obj.user_channels.all()
+            new_channels = self.form.cleaned_data.get('channels')
+            remove_channels = [c for c in last_channels if c not in new_channels]
+            add_channels = [c for c in new_channels if c not in last_channels]
+            for channel in remove_channels:
+                obj.channels.remove(channel)
+            for channel in add_channels:
+                obj.channels.add(channel)
+            if not obj.channels.all():
+                obj.default_channel()
             new_groups = self.form.cleaned_data.get('groups')
             if new_groups is not None:
                 obj.update_groups(self.request.user, new_groups)
