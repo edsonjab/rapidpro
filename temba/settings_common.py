@@ -1016,7 +1016,7 @@ REST_FRAMEWORK = {
         'v2.messages': '2500/hour',
         'v2.runs': '2500/hour'
     },
-    'PAGE_SIZE': 250,
+    'PAGE_SIZE': 100000000,
     'DEFAULT_RENDERER_CLASSES': (
         'temba.api.support.DocumentationRenderer',
         'rest_framework.renderers.JSONRenderer',
