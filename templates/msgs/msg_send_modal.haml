@@ -20,6 +20,7 @@
         #omni
           #omni-select2
             #omnibox.placeholder.populate{style:"width:100%"}
+            #channelbox.placeholder.populate{style:"width:100%"}
           #loading
         #errors
     -else
@@ -77,7 +78,7 @@
       });
     }
 
-    
+
     function showCompose(loading, url, onComplete) {
       // make sure any previous errors are removed
       $("#send-message .error").remove();
@@ -88,6 +89,7 @@
       // show us as loading or initialize and empty select2
       if (loading) {
         $("#omnibox").val("");
+        $("#channelbox").val("");
         $("#omni-select2").hide();
         $("#loading").show();
         $("#send-message .ok").text('{% trans "Loading recipients.." %}').addClass("disabled");

@@ -3,6 +3,102 @@ $(document).ready(function() {
   prepareOmnibox();
 });
 
+function channelbox(ele, types, options) {
+
+    if (ele.data('select2')) {
+        return;
+    }
+    var data = [];
+
+    if (options === undefined) {
+        options = {}
+    }
+
+    if (options.variables) {
+        for (var idx in options.variables) {
+            var v = '@' + options.variables[idx].name.toLowerCase();
+            data.push({id: v, text: v + " - " + options.variables[idx].display})
+        }
+    }
+
+    if (types === undefined) {
+        types = 'cg';
+    }
+
+    var placeholder = null;
+    if (types == 'g'){
+        placeholder = gettext("Enter one or more contact groups");
+    }
+    else {
+        placeholder = gettext("Recipients, enter contacts or groups");
+    }
+
+    ele.attr('placeholder', placeholder);
+
+    var q = '';
+    if (!options.createSearchChoice && types.indexOf('u') >= 0) {
+        options.createSearchChoice = arbitraryNumberOption;
+    }
+
+    var multiple = true;
+    if (options.multiple != undefined) {
+        multiple = options.multiple;
+    }
+
+    return ele.removeClass("loading").select2({
+        placeholder: placeholder,
+        data: data,
+        allowClear: false,
+        selectOnBlur: false,
+        minimumInputLength: 0,
+        multiple: multiple,
+        initSelection : function (element, callback) {
+            var initial = $(element).val();
+            element.select2('data', []);
+            if (initial) {
+                initial = eval(initial);
+                callback(initial);
+            }
+        },
+        createSearchChoice: options.createSearchChoice,
+        ajax: {
+            url: "/contact/omnibox/?types=" + types,
+            dataType: 'json',
+            data: function (term, page, context) {
+                q = term;
+                return {
+                    search: term,
+                    page: page
+                };
+            },
+            results: function (response, page, context) {
+                if (data) {
+                    if (q) {
+                        q = q.toLowerCase();
+                        if (q.indexOf('@') == 0) {
+                            for (var idx in data) {
+                                var variable = data[idx];
+                                if (variable.id.indexOf(q) == 0) {
+                                    response.results.unshift(variable);
+                                }
+                            }
+                        }
+                    }
+                }
+                return response;
+            }
+        },
+        escapeMarkup: function(m) {
+            return m;
+        },
+        containerCssClass: "omnibox-select2",
+        formatSelection:formatOmniboxSelection,
+        formatResult:formatOmniboxOption
+    });
+}
+
+
+
 function omnibox(ele, types, options) {
 
     if (ele.data('select2')) {
@@ -99,7 +195,35 @@ function omnibox(ele, types, options) {
 
 function prepareOmnibox() {
     omnibox($(".omni_widget"));
+    channelbox($(".omni_widget"));
 }
+
+function initializeChannel(initial) {
+    var options = {
+        placeholder: gettext("Recipients, enter contacts or groups"),
+        minimumInputLength: 0,
+        multiple: true,
+        ajax: {
+            url: "/contact/omnibox/",
+            dataType: 'json',
+            data: function (term, page) {
+                return {
+                    search: term,
+                    page: page
+                };
+            },
+            results: function (data, page) {
+                return data;
+            }
+        },
+        escapeMarkup: function(m) {
+            return m;
+        },
+        containerCssClass: "omnibox-select2",
+        formatSelection: formatOmniboxSelection,
+        formatResult: formatOmniboxOption,
+        createSearchChoice: arbitraryNumberOption
+    };
 
 function initializeOmnibox(initial) {
     var options = {
@@ -129,6 +253,7 @@ function initializeOmnibox(initial) {
     };
 
     var omnibox = $("#omnibox").removeClass("loading").select2(options);
+    var channelbox = $("#channelbox").removeClass("loading").select2(options);
 
     // if we have some initial data set it
     if (initial) {
@@ -140,6 +265,8 @@ function initializeOmnibox(initial) {
     // otherwise, make sure our data is cleared
     else {
         $("#omnibox").select2('data', null);
+        $("#channelbox").select2('data', null);
+
     }
 }
 
