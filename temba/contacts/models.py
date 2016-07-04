@@ -236,9 +236,9 @@ class Contact(TembaModel):
         channel = Channel.objects.filter(org = self.org).order_by('?').first()
         self.channels.add(channel)
     def save(self, *args, **kwargs):
-        if not self.channels:
-            self.default_channel()
         super(Contact,self).save(*args, **kwargs)
+        if not self.channels.all():
+            self.default_channel()
     @classmethod
     def get_contacts(cls, org, blocked=False):
         return Contact.objects.filter(org=org, is_active=True, is_test=False, is_blocked=blocked)

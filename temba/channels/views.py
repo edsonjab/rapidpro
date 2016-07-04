@@ -2374,7 +2374,7 @@ class ListChannelAjax(TemplateView):
         list_data = []
         results = []
         for channel in channels:
-             text = "id:  %s, "%(channel.id)
+            text = "id:  %s, "%(channel.id)
             text += "" if not channel.address else "direccion: %s, " %(channel.address)
             text += "" if not channel.channel_type else "tipo: %s, "%(channel.channel_type)
             text += "" if not channel.scheme else "esquema: %s" %(channel.scheme)
