@@ -27,10 +27,10 @@ function channelbox(ele, types, options) {
 
     var placeholder = null;
     if (types == 'g'){
-        placeholder = gettext("Enter one or more contact groups");
+        placeholder = gettext("Enter a channel");
     }
     else {
-        placeholder = gettext("Recipients, enter contacts or groups");
+        placeholder = gettext("Enter a channel");
     }
 
     ele.attr('placeholder', placeholder);
@@ -62,7 +62,7 @@ function channelbox(ele, types, options) {
         },
         createSearchChoice: options.createSearchChoice,
         ajax: {
-            url: "/contact/omnibox/?types=" + types,
+            url: "/listChannelsAjax/",
             dataType: 'json',
             data: function (term, page, context) {
                 q = term;
@@ -197,14 +197,13 @@ function prepareOmnibox() {
     omnibox($(".omni_widget"));
     channelbox($(".omni_widget"));
 }
-
 function initializeChannel(initial) {
     var options = {
-        placeholder: gettext("Recipients, enter contacts or groups"),
+        placeholder: gettext("Enter a channel"),
         minimumInputLength: 0,
         multiple: true,
         ajax: {
-            url: "/contact/omnibox/",
+            url: "/listChannelsAjax/",
             dataType: 'json',
             data: function (term, page) {
                 return {
@@ -224,6 +223,22 @@ function initializeChannel(initial) {
         formatResult: formatOmniboxOption,
         createSearchChoice: arbitraryNumberOption
     };
+
+    var channelbox = $("#channelbox").removeClass("loading").select2(options);
+
+    // if we have some initial data set it
+    if (initial) {
+        $("#channelbox").select2('data', initial);
+        $("#omni-select3").show();
+        $("#loading").hide();
+        $("#send-message .ok").text(gettext("Send Message")).removeClass("disabled");
+    }
+    // otherwise, make sure our data is cleared
+    else {
+        $("#channelbox").select2('data', null);
+
+    }
+}
 
 function initializeOmnibox(initial) {
     var options = {
@@ -253,7 +268,6 @@ function initializeOmnibox(initial) {
     };
 
     var omnibox = $("#omnibox").removeClass("loading").select2(options);
-    var channelbox = $("#channelbox").removeClass("loading").select2(options);
 
     // if we have some initial data set it
     if (initial) {
@@ -265,8 +279,6 @@ function initializeOmnibox(initial) {
     // otherwise, make sure our data is cleared
     else {
         $("#omnibox").select2('data', null);
-        $("#channelbox").select2('data', null);
-
     }
 }
 

@@ -2359,3 +2359,26 @@ class ChannelLogCRUDL(SmartCRUDL):
         def derive_queryset(self, **kwargs):
             queryset = super(ChannelLogCRUDL.Read, self).derive_queryset(**kwargs)
             return queryset.filter(msg__channel__org=self.request.user.get_org).order_by('-created_on')
+
+#######################################################################
+##################### Ajax functions ##################################
+#######################################################################
+#######################################################################
+##################### Ajax functions ##################################
+#######################################################################
+from django.core import serializers
+import json
+from django.views.generic import TemplateView
+class ListChannelAjax(TemplateView):
+    def get(self, request, *args, **kwargs):
+        org = request.user.get_org()
+        channels = Channel.objects.filter(org = org)
+        list_data = []
+        results = []
+        for channel in channels:
+            results.append({'id': "%s" % (channel.id),
+                              'text': "%s,%s,%s,%s" % (channel.name, channel.address, channel.channel_type, channel.scheme),
+                              })
+        list_data = {"total": channels.count(), "results": results, "err": "nil", "more": False}
+        list_json = json.dumps(list_data)  #dump list as JSON
+        return HttpResponse(list_json, content_type='application/json')
