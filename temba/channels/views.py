@@ -2360,9 +2360,7 @@ class ChannelLogCRUDL(SmartCRUDL):
             queryset = super(ChannelLogCRUDL.Read, self).derive_queryset(**kwargs)
             return queryset.filter(msg__channel__org=self.request.user.get_org).order_by('-created_on')
 
-#######################################################################
-##################### Ajax functions ##################################
-#######################################################################
+
 #######################################################################
 ##################### Ajax functions ##################################
 #######################################################################
@@ -2376,8 +2374,12 @@ class ListChannelAjax(TemplateView):
         list_data = []
         results = []
         for channel in channels:
+             text = "id:  %s, "%(channel.id)
+            text += "" if not channel.address else "direccion: %s, " %(channel.address)
+            text += "" if not channel.channel_type else "tipo: %s, "%(channel.channel_type)
+            text += "" if not channel.scheme else "esquema: %s" %(channel.scheme)
             results.append({'id': "%s" % (channel.id),
-                              'text': "%s,%s,%s,%s" % (channel.name, channel.address, channel.channel_type, channel.scheme),
+                              'text': "%s"%( text),
                               })
         list_data = {"total": channels.count(), "results": results, "err": "nil", "more": False}
         list_json = json.dumps(list_data)  #dump list as JSON
