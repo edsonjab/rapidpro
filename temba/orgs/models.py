@@ -377,7 +377,6 @@ class Org(SmartModel):
         from temba.contacts.models import TEL_SCHEME
         from temba.channels.models import SEND
         from temba.contacts.models import ContactURN
-        print "*"*10 + "En get_channel_for_role Org-> models" + "*"*10
 
         if not scheme and not contact_urn:
             raise ValueError("Must specify scheme or contact URN")
@@ -390,7 +389,6 @@ class Org(SmartModel):
                 if contact_urn.channel and contact_urn.channel.is_active and role == SEND:
                     previous_sender = self.get_channel_delegate(contact_urn.channel, role)
                     if previous_sender:
-                        print "Se usa el canal anterior"
                         return previous_sender
 
             if scheme == TEL_SCHEME:
@@ -434,11 +432,14 @@ class Org(SmartModel):
                             break
 
                 if channel:
-                    print "No se usa un canal previo, se usa el canal %s" %(channel.id)
+                    print "No se usa un canal previo, se usa el canal %s %s" %(channel.id, channel.address)
+                    if balance:
+                        channel = channel.get_random_channel_with_this_charac()
+                        print "Usara un canal random:"
+                    print "Se usara el canal : %s %s" %(channel.id, channel.address)
                     return self.get_channel_delegate(channel, SEND)
 
         # get any send channel without any country or URN hints
-        print "No se uso nada de lo previsto"
         return self.get_channel(scheme, country_code, role)
 
     def get_send_channel(self, scheme=None, contact_urn=None, country_code=None, balance=None):

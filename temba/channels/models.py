@@ -271,6 +271,13 @@ class Channel(TembaModel):
             org.normalize_contact_tels()
 
         return channel
+    """ Method to obtain a random channel with the same characteristics of
+        This channel (channel_type and org)
+        use in load balancing
+    """
+    def get_random_channel_with_this_charac(self):
+        return Channel.objects.filter(org = self.org, channel_type = self.channel_type, is_active = True).order_by('?').first()
+
 
     @classmethod
     def add_telegram_channel(cls, org, user, auth_token):
