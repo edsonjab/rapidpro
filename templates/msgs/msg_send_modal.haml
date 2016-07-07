@@ -77,6 +77,10 @@
         initializeOmnibox(data.results);
         $('.select2-input').attr('tabindex', 2);
       });
+       $.get("{% url 'listChannelsAjax' %}?" + queryString, function(data, textStatus){
+         initializeChannel(data.results);
+         $('.select3-input').attr('tabindex', 3);
+       });
     }
 
 

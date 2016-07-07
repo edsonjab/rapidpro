@@ -26,7 +26,7 @@ from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
 from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, FACEBOOK_SCHEME, ContactURN
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, FACEBOOK_SCHEME, ContactURN,Contact
 from temba.msgs.models import Broadcast, Call, Msg, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin
@@ -2367,10 +2367,22 @@ class ChannelLogCRUDL(SmartCRUDL):
 from django.core import serializers
 import json
 from django.views.generic import TemplateView
+""" Class to list all channel by org, or by contact
+"""
 class ListChannelAjax(TemplateView):
     def get(self, request, *args, **kwargs):
         org = request.user.get_org()
-        channels = Channel.objects.filter(org = org)
+
+        if 'c'in request.GET:
+            """Search by contact """
+            contact_id = int( request.GET['c'])
+            channels = Contact.objects.get(id = contact_id).channels.all()
+            if not channels:
+                """If contact doesnt have channels, take first of the org """
+                channels = Channel.objects.filter(org = org).first()
+        else :
+            channels = Channel.objects.filter(org = org)
+
         list_data = []
         results = []
         for channel in channels:
