@@ -434,7 +434,7 @@ class Org(SmartModel):
                 if channel:
                     print "No se usa un canal previo, se usa el canal %s %s" %(channel.id, channel.address)
                     if balance:
-                        channel = channel.get_random_channel_with_this_charac()
+                        channel = channel.get_random_channel_with_this_charac(contact_urn.contact)
                         print "Usara un canal random:"
                     print "Se usara el canal : %s %s" %(channel.id, channel.address)
                     return self.get_channel_delegate(channel, SEND)

@@ -214,7 +214,8 @@ class ContactForm(forms.ModelForm):
         self.org = self.user.get_org()
         del kwargs['user']
         super(ContactForm, self).__init__(*args, **kwargs)
-
+        self.fields['channels'].queryset  = Channel.objects.filter(org = self.org)
+        self.fields['channels'].help_text  = _("Canales que usara el contacto, si no selecciona una opcion se asignara uno aleatoreamente")
         # add all URN scheme fields if org is not anon
         extra_fields = []
         if not self.org.is_anon:
@@ -312,7 +313,7 @@ class UpdateContactForm(ContactForm):
         choices += [(l.iso_code, l.name) for l in self.instance.org.languages.all().order_by('orgs', 'name')]
 
         self.fields['language'] = forms.ChoiceField(required=False, label=_('Language'), initial=self.instance.language, choices=choices)
-        self.fields['channels'].initial = self.instance.user_channels.all()
+        self.fields['channels'].initial = self.instance.user_channels
         self.fields['channels'].queryset = Channel.objects.filter(org= self.user.get_org())
         self.fields['channels'].help_text= _("The channels which this contacts belongs to")
         self.fields['groups'].initial = self.instance.user_groups.all()
@@ -976,7 +977,7 @@ class ContactCRUDL(SmartCRUDL):
     class Create(ModalMixin, OrgPermsMixin, SmartCreateView):
         form_class = ContactForm
         exclude = ('is_active', 'uuid', 'language', 'org', 'fields', 'is_blocked', 'is_failed',
-                   'created_by', 'modified_by', 'is_test', 'channel')
+                   'created_by', 'modified_by', 'is_test')
         success_message = ''
         submit_button_name = _("Create")
 
@@ -1000,8 +1001,8 @@ class ContactCRUDL(SmartCRUDL):
                     scheme = field_key.split('__')[1]
                     # scheme = field_key[7:field_key.rfind('__')]
                     urns.append((scheme, value))
-
-            Contact.get_or_create(obj.org, self.request.user, obj.name, urns)
+            new_channels = self.form.cleaned_data.get('channels')
+            Contact.get_or_create(obj.org, self.request.user, obj.name, urns, channels = new_channels)
 
     class Update(ModalMixin, OrgObjPermsMixin, SmartUpdateView):
         form_class = UpdateContactForm

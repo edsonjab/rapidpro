@@ -261,7 +261,7 @@ class Contact(TembaModel):
         """
         Define Contact.user_groups to only refer to user groups
         """
-        return Channel.objects.filter(org =self.org)
+        return self.channels.all()
     def as_json(self):
         obj = dict(id=self.pk, name=unicode(self))
 
@@ -486,7 +486,7 @@ class Contact(TembaModel):
         return existing[0].contact if existing else None
 
     @classmethod
-    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False):
+    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False, channels=None):
         """
         Gets or creates a contact with the given URNs
         """
@@ -622,6 +622,11 @@ class Contact(TembaModel):
                 kwargs = dict(org=org, name=name, language=language, is_test=is_test,
                               created_by=user, modified_by=user)
                 contact = Contact.objects.create(**kwargs)
+                for channel in contact.channels.all():
+                    contact.channels.remove(channel)
+                for channel in channels :
+                    contact.channels.add(channel)
+                contact.save()
                 updated_attrs = kwargs.keys()
 
                 # add attribute which allows import process to track new vs existing
