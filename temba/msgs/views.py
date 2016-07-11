@@ -255,7 +255,8 @@ class BroadcastCRUDL(SmartCRUDL):
             response = super(BroadcastCRUDL.Send, self).pre_process(*args, **kwargs)
             org = self.request.user.get_org()
             simulation = self.request.REQUEST.get('simulation', 'false') == 'true'
-            self.channel = self.request.REQUEST.get('channel')
+            channels = self.request.REQUEST.get('channel').split(',')
+            self.channels = map(int, channels)
             if simulation:
                 return response
 
@@ -289,7 +290,7 @@ class BroadcastCRUDL(SmartCRUDL):
             simulation = self.request.REQUEST.get('simulation', 'false') == 'true'
 
             omnibox = self.form.cleaned_data['omnibox']
-            channel = Channel.objects.get(id = int(self.channel[0]))
+            self.channels = Channel.objects.filter(id__in = self.channels)
             has_schedule = self.form.cleaned_data['schedule']
 
             groups = list(omnibox['groups'])
@@ -297,27 +298,27 @@ class BroadcastCRUDL(SmartCRUDL):
             urns = list(omnibox['urns'])
 
             recipients = list()
-
-            if simulation:
-                # when simulating make sure we only use test contacts
-                for contact in contacts:
-                    if contact.is_test:
+            for channel in self.channels:
+                if simulation:
+                    # when simulating make sure we only use test contacts
+                    for contact in contacts:
+                        if contact.is_test:
+                            recipients.append(contact)
+                else:
+                    for group in groups:
+                        recipients.append(group)
+                    for contact in contacts:
                         recipients.append(contact)
-            else:
-                for group in groups:
-                    recipients.append(group)
-                for contact in contacts:
-                    recipients.append(contact)
-                for urn in urns:
-                    recipients.append(urn)
+                    for urn in urns:
+                        recipients.append(urn)
 
-            schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
-            broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, channel = channel
-                                         ,schedule=schedule)
+                schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
+                broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, channel = channel
+                                             ,schedule=schedule)
 
-            if not has_schedule:
-                self.post_save(broadcast)
-                super(BroadcastCRUDL.Send, self).form_valid(form)
+                if not has_schedule:
+                    self.post_save(broadcast, channel)
+                    super(BroadcastCRUDL.Send, self).form_valid(form)
 
             analytics.track(self.request.user.username, 'temba.broadcast_created',
                             dict(contacts=len(contacts), groups=len(groups), urns=len(urns)))
@@ -330,10 +331,10 @@ class BroadcastCRUDL(SmartCRUDL):
                     return HttpResponseRedirect(reverse('msgs.broadcast_schedule_read', args=[broadcast.pk]))
                 return HttpResponseRedirect(self.get_success_url())
 
-        def post_save(self, obj):
+        def post_save(self, obj, channel= None):
             # fire our send in celery
             from temba.msgs.tasks import send_broadcast_task
-            send_broadcast_task.delay(obj.pk)
+            send_broadcast_task.delay(obj.pk,channel)
             return obj
 
         def get_form_kwargs(self):
