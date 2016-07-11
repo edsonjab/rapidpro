@@ -335,7 +335,7 @@ class Broadcast(models.Model):
         return commands
 
     def send(self, channel = None, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
-             created_on=None, base_language=None, partial_recipients=None, balance=None):
+             created_on=None, base_language=None, partial_recipients=None, use_channel_by_contact=None):
         """
         Sends this broadcast by creating outgoing messages for each recipient.
         """
@@ -418,7 +418,7 @@ class Broadcast(models.Model):
                                           insert_object=False,
                                           priority=priority,
                                           created_on=created_on,
-                                          balance = balance
+                                          use_channel_by_contact = use_channel_by_contact
                                           )
 
             except UnreachableException:
@@ -1196,7 +1196,7 @@ class Msg(models.Model):
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, priority=SMS_NORMAL_PRIORITY,
                         created_on=None, response_to=None, message_context=None, status=PENDING, insert_object=True,
-                        media=None, topup_id=None, msg_type=INBOX, balance = None):
+                        media=None, topup_id=None, msg_type=INBOX, use_channel_by_contact = None):
 
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
@@ -1215,7 +1215,7 @@ class Msg(models.Model):
                 if msg_type == IVR:
                     channel = org.get_call_channel()
                 else:
-                    channel = org.get_send_channel(contact_urn=contact_urn,balance = balance)
+                    channel = org.get_send_channel(contact_urn=contact_urn,use_channel_by_contact = use_channel_by_contact)
 
                 if not channel and not contact.is_test:
                     raise ValueError("No suitable channel available for this org")

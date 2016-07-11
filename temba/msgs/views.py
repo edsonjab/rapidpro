@@ -290,7 +290,6 @@ class BroadcastCRUDL(SmartCRUDL):
             simulation = self.request.REQUEST.get('simulation', 'false') == 'true'
 
             omnibox = self.form.cleaned_data['omnibox']
-            self.channels = Channel.objects.filter(id__in = self.channels)
             has_schedule = self.form.cleaned_data['schedule']
 
             groups = list(omnibox['groups'])
@@ -298,28 +297,37 @@ class BroadcastCRUDL(SmartCRUDL):
             urns = list(omnibox['urns'])
 
             recipients = list()
-            for channel in self.channels:
-                if simulation:
-                    # when simulating make sure we only use test contacts
-                    for contact in contacts:
-                        if contact.is_test:
-                            recipients.append(contact)
-                else:
-                    for group in groups:
-                        recipients.append(group)
-                    for contact in contacts:
+            if simulation:
+                # when simulating make sure we only use test contacts
+                for contact in contacts:
+                    if contact.is_test:
                         recipients.append(contact)
-                    for urn in urns:
-                        recipients.append(urn)
+            else:
+                for group in groups:
+                    recipients.append(group)
+                for contact in contacts:
+                    recipients.append(contact)
+                for urn in urns:
+                    recipients.append(urn)
+            if self.channels:
+                """One or more channels specified """
+                self.channels = Channel.objects.filter(id__in = self.channels)
+                for channel in self.channels:
+                    schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
+                    broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, channel=channel
+                                                 ,schedule=schedule)
 
+                    if not has_schedule:
+                        self.post_save(broadcast, channel)
+                        super(BroadcastCRUDL.Send, self).form_valid(form)
+            else :
                 schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
-                broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, channel = channel
-                                             ,schedule=schedule)
+                broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, schedule=schedule)
 
                 if not has_schedule:
-                    self.post_save(broadcast, channel)
+                    self.post_save(broadcast)
                     super(BroadcastCRUDL.Send, self).form_valid(form)
-
+                    
             analytics.track(self.request.user.username, 'temba.broadcast_created',
                             dict(contacts=len(contacts), groups=len(groups), urns=len(urns)))
 
