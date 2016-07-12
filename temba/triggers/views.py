@@ -519,10 +519,11 @@ class TriggerCRUDL(SmartCRUDL):
             org = self.request.user.get_org()
             group_flow = Flow.create_join_group(org, self.request.user, join_group, send_msg, start_flow)
 
-            Trigger.objects.create(created_by=self.request.user, modified_by=self.request.user,
+            trigger = Trigger.objects.create(created_by=self.request.user, modified_by=self.request.user,
                                    org=self.request.user.get_org(), keyword=keyword,
-                                   trigger_type=Trigger.TYPE_KEYWORD,
-                                   flow=group_flow)
+                                   trigger_type=Trigger.TYPE_KEYWORD)
+
+            TriggerToFlow.objects.create(trigger = trigger, flow = group_flow)
 
             analytics.track(self.request.user.username, 'temba.trigger_created_register', dict(name=join_group.name))
 
@@ -589,12 +590,12 @@ class TriggerCRUDL(SmartCRUDL):
 
             recipients = self.form.cleaned_data['omnibox']
 
-            trigger = Trigger.objects.create(flow=self.form.cleaned_data['flow'],
-                                             org=self.request.user.get_org(),
+            trigger = Trigger.objects.create(org=self.request.user.get_org(),
                                              schedule=schedule,
                                              trigger_type=Trigger.TYPE_SCHEDULE,
                                              created_by=self.request.user,
                                              modified_by=self.request.user)
+            TriggerToFlow.objects.create(trigger = trigger, flow =self.form.cleaned_data['flow'])
 
             for group in recipients['groups']:
                 trigger.groups.add(group)
@@ -656,8 +657,8 @@ class TriggerCRUDL(SmartCRUDL):
                                    is_active=True).update(is_archived=True)
 
             # then create a new missed call trigger
-            Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_MISSED_CALL,
-                                   flow=form.cleaned_data['flow'])
+            trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_MISSED_CALL)
+            TriggerToFlow.objects.create(trigger = trigger, flow = form.cleaned_data['flow'])
 
             analytics.track(self.request.user.username, 'temba.trigger_created_missed_call')
 
@@ -686,9 +687,9 @@ class TriggerCRUDL(SmartCRUDL):
 
             # then create a new catch all trigger
             trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org,
-                                             trigger_type=Trigger.TYPE_CATCH_ALL,
-                                             flow=form.cleaned_data['flow'])
+                                             trigger_type=Trigger.TYPE_CATCH_ALL)
 
+            TriggerToFlow.objects.create(trigger = trigger, flow = form.cleaned_data['flow'])
             # add all the groups we are relevant for
             for group in groups:
                 trigger.groups.add(group)
@@ -711,8 +712,9 @@ class TriggerCRUDL(SmartCRUDL):
             user = self.request.user
             org = user.get_org()
 
-            Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_FOLLOW,
-                                   flow=form.cleaned_data['flow'], channel=form.cleaned_data['channel'])
+            trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_FOLLOW,
+                                   channel=form.cleaned_data['channel'])
+            TriggerToFlow.objects.create(trigger = trigger, flow =form.cleaned_data['flow'] )
 
             analytics.track(self.request.user.username, 'temba.trigger_created_follow')
 
