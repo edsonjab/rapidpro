@@ -45,7 +45,7 @@ class Trigger(SmartModel):
 
     #flow = models.ForeignKey(Flow, verbose_name=_("Flow"), null=True, blank=True,
     #                         help_text=_("Which flow will be started"), related_name="triggers")
-    #flows = models.ManyToManyField(Flow, verbose_name=_("Flow"),  blank=True, help_text=_("Which flow will be started"), through=TriggerToFlow)
+    flows = models.ManyToManyField(Flow, verbose_name=_("Flow"),  blank=True, help_text=_("Which flow will be started"), through=TriggerToFlow)
 
     last_triggered = models.DateTimeField(verbose_name=_("Last Triggered"), default=None, null=True,
                                           help_text=_("The last time this trigger was fired"))
@@ -137,7 +137,11 @@ class Trigger(SmartModel):
                 trigger = trigger.first()
                 if trigger:
                     trigger.is_archived = False
-                    trigger.flow = flow
+                    t_to_flow = TriggerToFlow.objects.filter(trigger = trigger, flow = flow)
+                    if not t_to_flow:
+                        t_to_flow = TriggerToFlow.objects.create(trigger = trigger, flow = flow)
+                        channels = Channel.objects.filter(org = org)
+                        t_to_flow.add(*channels)
                     trigger.save()
                 else:
 
@@ -150,7 +154,9 @@ class Trigger(SmartModel):
                                                      keyword=trigger_spec['keyword'],
                                                      created_by=user, modified_by=user,
                                                      channel=channel)
-                    TriggerToFlow.objects.create(trigger = trigger, flow = flow)
+                    trigger_to_flow = TriggerToFlow.objects.create(trigger = trigger, flow = flow)
+                    channels = Channel.objects.filter(org = org)
+                    trigger_to_flow.add(*channels)
 
                     for group in groups:
                         trigger.groups.add(group)
@@ -192,7 +198,16 @@ class Trigger(SmartModel):
 
         # only fire the first matching trigger
         if triggers:
-            triggers[0].flow.start([], [contact], start_msg=start_msg, restart_participants=True)
+            t_to_flows = TriggerToFlow.objects.filter(trigger__in= triggers)
+            """Check if any channel match with msg.channel (channel of petition)"""
+            channel_filter = start_msg.channel
+            flow = None
+            for t_to_flow in t_to_flows:
+                if channel_filter in t_to_flow.channels.all():
+                    flow = t_to_flow.flow
+                    break
+            flow.start([], [contact], start_msg=start_msg, restart_participants=True)
+            #triggers[0].flow.start([], [contact], start_msg=start_msg, restart_participants=True)
 
         return bool(triggers)
 
@@ -244,7 +259,16 @@ class Trigger(SmartModel):
             trigger.save()
 
         # if we have an associated flow, start this contact in it
-        trigger.flow.start([], [contact], start_msg=msg, restart_participants=True)
+        t_to_flows = TriggerToFlow.objects.filter(trigger= trigger)
+        """Check if any channel match with msg.channel (channel of petition)"""
+        channel_filter = msg.channel
+        flow = None
+        for t_to_flow in t_to_flows:
+            if channel_filter in t_to_flow.channels.all():
+                flow = t_to_flow.flow
+                break
+        flow.start([], [contact], start_msg=msg, restart_participants=True)
+        #trigger.flow.start([], [contact], start_msg=msg, restart_participants=True)
 
         return True
 
@@ -276,7 +300,9 @@ class Trigger(SmartModel):
         trigger.trigger_count += 1
         trigger.save()
 
-        return trigger.flow
+        t_to_flows = TriggerToFlow.objects.filter(trigger= trigger).first()
+
+        return t_to_flows.flow
 
     @classmethod
     def apply_action_archive(cls, user, triggers):
@@ -337,11 +363,12 @@ class Trigger(SmartModel):
         self.is_active = False
         self.save()
 
-    def fire(self):
+    def fire(self, msg=None ):
         if self.is_archived or not self.is_active:
             return None
-
-        channels = self.flow.org.channels.all()
+        t_to_flows = TriggerToFlow.objects.filter(trigger= self).first()
+        flow = t_to_flows.flow
+        channels = flow.org.channels.all()
         if not channels:
             return None
 
@@ -352,7 +379,16 @@ class Trigger(SmartModel):
             self.last_triggered = timezone.now()
             self.trigger_count += 1
             self.save()
-
-            return self.flow.start(groups, contacts, restart_participants=True)
+            if msg:
+                t_to_flows = TriggerToFlow.objects.filter(trigger= trigger)
+                """Check if any channel match with msg.channel (channel of petition)"""
+                channel_filter = msg.channel
+                flow = None
+                for t_to_flow in t_to_flows:
+                    if channel_filter in t_to_flow.channels.all():
+                        flow = t_to_flow.flow
+                        break
+                return flow.start(groups, contacts, restart_participants=True)
+            #return self.flow.start(groups, contacts, restart_participants=True)
 
         return False

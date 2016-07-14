@@ -68,32 +68,32 @@ class BaseFlowForm(forms.ModelForm):
                                               initial=str(60 * 24 * 7),
                                               choices=EXPIRES_CHOICES)
 
-    def clean_keyword_triggers(self):
+    def clean_channels_used(self):
         org = self.user.get_org()
         wrong_format = []
         existing_keywords = []
-        keyword_triggers = self.cleaned_data.get('keyword_triggers', '').strip()
-        channels_used = self.cleaned_data.get('channels_used', '').strip()
-
-        for keyword in keyword_triggers.split(','):
+        channels_used = self.cleaned_data.get('channels_used')
+        if not channels_used:
+            channels_used = [c.id for c in Channel.objects.filter(org = org)]
+        for keyword in self.keyword_triggers.split(','):
             if keyword and not regex.match('^\w+$', keyword, flags=regex.UNICODE | regex.V0):
                 wrong_format.append(keyword)
 
             # make sure it is unique on this org
             if keyword and org:
-                """Discriminar por palabra
-                   como permitiremos varios flujos por un solo trigger
-                   entonces vemos si existe el trigger
-                   y despues hay que verificar que ningun flujo asociado
-                   este trabajando con los mismos canales """
-                   #PENDIENTE
-                existing = Trigger.objects.filter(org=org, keyword__iexact=keyword, is_archived=False, is_active=True)
-
+                """Now each trigger can active one a or more
+                flows, the difference will be the list of channels
+                associated in the relation flow To trigger, must be
+                disjoin"""
+                trigger_list = Trigger.objects.filter(org=org, keyword__iexact=keyword, is_archived=False, is_active=True)
                 existing_flag = False
-                if self.instance:
-                    existing = existing.exclude(flows=self.instance.pk).values_list('trigger', flat=True)
-                    flows = TriggerToFlow.objects.filter(trigger__in = existing).select_related()
-                    for trigger_to_flow in flows:
+                if self.instance and trigger_list:
+                    """Obtain flows associated to each trigger with that keyword"""
+                    triggers_match = trigger_list.exclude(triggertoflow__flow=self.instance.pk)
+                    """In the many to many, obtain objects related with the triggers used"""
+                    triggers_flows = TriggerToFlow.objects.filter(trigger__in = triggers_match).select_related()
+                    for trigger_to_flow in triggers_flows:
+                        """Obtain the list of each flow - trigger relation"""
                         channel_list = [channel.id for channel in trigger_to_flow.channels.all()]
                         if set(channel_list) &set(channels_used):
                             existing_flag = True
@@ -111,8 +111,11 @@ class BaseFlowForm(forms.ModelForm):
             else:
                 error_message = _('The keyword "%s" is already used for another flow') % ', '.join(existing_keywords)
             raise forms.ValidationError(error_message)
+        return channels_used
 
-        return keyword_triggers.lower()
+    def clean_keyword_triggers(self):
+        self.keyword_triggers = self.cleaned_data.get('keyword_triggers', '').strip()
+        return self.keyword_triggers.lower()
 
     class Meta:
         model = Flow
@@ -340,6 +343,53 @@ class PartialTemplate(SmartTemplateView):
     def get_template_names(self):
         return "partials/%s.html" % self.template
 
+class FlowUpdateForm(BaseFlowForm):
+    keyword_triggers = forms.CharField(
+            required=False,
+            label=_("Global keyword triggers"),
+            help_text=_("When a user sends any of these keywords they will begin this flow")
+        )
+    channels_used = forms.ModelMultipleChoiceField(queryset=Channel.objects.all() ,required=False, label=_("Canales"),help_text=_("Add or remove groups this contact belongs to"))
+
+    def __init__(self, user, *args, **kwargs):
+        super(FlowUpdateForm, self).__init__(*args, **kwargs)
+        self.user = user
+
+        metadata = self.instance.get_metadata_json()
+        triggers_used = Trigger.objects.filter(
+            org=self.instance.org, is_archived=False, groups=None,
+            trigger_type=Trigger.TYPE_KEYWORD
+        ).order_by('created_on')
+        triggers = [trigger.id for trigger in triggers_used]
+        all_triggers_to_flow = TriggerToFlow.objects.filter(trigger__in =triggers , flow = self.instance)
+        flow_triggers = [t.trigger for t in all_triggers_to_flow]
+
+        # if we don't have a base language let them pick one (this is immutable)
+        if not self.instance.base_language:
+            choices = [('', 'No Preference')]
+            choices += [(lang.iso_code, lang.name) for lang in self.instance.org.languages.all().order_by('orgs', 'name')]
+            self.fields['base_language'] = forms.ChoiceField(label=_('Language'), choices=choices)
+
+        if self.instance.flow_type == Flow.SURVEY:
+            contact_creation = forms.ChoiceField(
+                label=_('Create a contact '),
+                initial=metadata.get(Flow.CONTACT_CREATION, Flow.CONTACT_PER_RUN),
+                help_text=_("Whether surveyor logins should be used as the contact for each run"),
+                choices=(
+                    (Flow.CONTACT_PER_RUN, _('For each run')),
+                    (Flow.CONTACT_PER_LOGIN, _('For each login'))
+                )
+            )
+
+            self.fields[Flow.CONTACT_CREATION] = contact_creation
+
+        self.fields['keyword_triggers'].initial = ','.join([t.keyword for t in flow_triggers])
+        self.fields['channels_used'].initial = ','.join( [str(c.id) for t in all_triggers_to_flow for c in t.channels.all()])
+
+    class Meta:
+        model = Flow
+        fields = ('name', 'keyword_triggers', 'labels', 'base_language', 'expires_after_minutes', 'ignore_triggers', 'channels_used')
+
 
 class FlowCRUDL(SmartCRUDL):
     actions = ('list', 'archived', 'copy', 'create', 'delete', 'update', 'export', 'simulate', 'export_results',
@@ -446,7 +496,7 @@ class FlowCRUDL(SmartCRUDL):
                 self.fields['channels_used'].queryset = Channel.objects.filter(org =self.user.get_org())
             class Meta:
                 model = Flow
-                fields = ('name', 'keyword_triggers', 'expires_after_minutes', 'flow_type', 'base_language')
+                fields = ('name', 'keyword_triggers', 'expires_after_minutes', 'flow_type', 'base_language', 'channels_used')
 
         form_class = FlowCreateForm
         success_url = 'id@flows.flow_editor'
@@ -483,8 +533,7 @@ class FlowCRUDL(SmartCRUDL):
             # if we don't have a language, use base
             if not obj.base_language:
                 obj.base_language = 'base'
-            """Agregar la parte de los canales al flujo """
-            #PENDIENTE
+
             self.object = Flow.create(org, self.request.user, obj.name,
                                       flow_type=obj.flow_type, expires_after_minutes=obj.expires_after_minutes,
                                       base_language=obj.base_language)
@@ -496,12 +545,19 @@ class FlowCRUDL(SmartCRUDL):
             # create triggers for this flow only if there are keywords
             if len(self.form.cleaned_data['keyword_triggers']) > 0:
                 for keyword in self.form.cleaned_data['keyword_triggers'].split(','):
-                    """Revisar si existe un trigger asociado con las palabras usadas
-                        de existir, agregarlo a su lista de flujos """
-                    #PENDIENTE
-                    trigger =Trigger.objects.create(org=org, keyword=keyword,created_by=user, modified_by=user)
-                    TriggerToFlow.objects.create(trigger = trigger, flow = obj)
-
+                    trigger = Trigger.objects.filter (org = org, keyword = keyword).first()
+                    """Check if there is a triggert with the keyword in the iteration"""
+                    if not trigger:
+                        """If there is a trigger, use that and add the flow to the relation
+                        TriggerToFlow"""
+                        trigger =Trigger.objects.create(org=org, keyword=keyword,created_by=user, modified_by=user)
+                    trigger_to_flow = TriggerToFlow.objects.create(trigger = trigger, flow = obj)
+                    """Add the channels of the flow """
+                    channels_used =  self.form.cleaned_data['channels_used']
+                    if not channels_used:
+                        """If the user not specify a list of channels, then add all org channels """
+                        channels_used = Channel.objects.filter(org = org)
+                    trigger_to_flow.channels.add(*channels_used)
             return obj
 
     class Delete(ModalMixin, OrgObjPermsMixin, SmartDeleteView):
@@ -529,53 +585,6 @@ class FlowCRUDL(SmartCRUDL):
             return HttpResponseRedirect(reverse('flows.flow_editor', args=[copy.pk]))
 
     class Update(ModalMixin, OrgObjPermsMixin, SmartUpdateView):
-        class FlowUpdateForm(BaseFlowForm):
-            keyword_triggers = forms.CharField(
-                required=False,
-                label=_("Global keyword triggers"),
-                help_text=_("When a user sends any of these keywords they will begin this flow")
-            )
-            channels_used = forms.ModelMultipleChoiceField(queryset=Channel.objects.all() ,required=False, label=_("Canales"),help_text=_("Add or remove groups this contact belongs to"))
-
-            def __init__(self, user, *args, **kwargs):
-                super(FlowCRUDL.Update.FlowUpdateForm, self).__init__(*args, **kwargs)
-                self.user = user
-
-                metadata = self.instance.get_metadata_json()
-                triggers_used = Trigger.objects.filter(
-                    org=self.instance.org, is_archived=False, groups=None,
-                    trigger_type=Trigger.TYPE_KEYWORD
-                ).order_by('created_on')
-                triggers = [trigger.id for trigger in triggers_used]
-                all_triggers_to_flow = TriggerToFlow.objects.filter(trigger__in =triggers , flow = self.instance)
-                flow_triggers = [t.trigger for t in all_triggers_to_flow]
-
-                # if we don't have a base language let them pick one (this is immutable)
-                if not self.instance.base_language:
-                    choices = [('', 'No Preference')]
-                    choices += [(lang.iso_code, lang.name) for lang in self.instance.org.languages.all().order_by('orgs', 'name')]
-                    self.fields['base_language'] = forms.ChoiceField(label=_('Language'), choices=choices)
-
-                if self.instance.flow_type == Flow.SURVEY:
-                    contact_creation = forms.ChoiceField(
-                        label=_('Create a contact '),
-                        initial=metadata.get(Flow.CONTACT_CREATION, Flow.CONTACT_PER_RUN),
-                        help_text=_("Whether surveyor logins should be used as the contact for each run"),
-                        choices=(
-                            (Flow.CONTACT_PER_RUN, _('For each run')),
-                            (Flow.CONTACT_PER_LOGIN, _('For each login'))
-                        )
-                    )
-
-                    self.fields[Flow.CONTACT_CREATION] = contact_creation
-
-                self.fields['keyword_triggers'].initial = ','.join([t.keyword for t in flow_triggers])
-                self.fields['channels_used'].initial = TriggerToFlow.objects.filter(flow = self.instance).first().channels.all()
-
-            class Meta:
-                model = Flow
-                fields = ('name', 'keyword_triggers', 'labels', 'base_language', 'expires_after_minutes', 'ignore_triggers')
-
         success_message = ''
         fields = ('name', 'keyword_triggers', 'expires_after_minutes', 'ignore_triggers', 'channels_used')
         form_class = FlowUpdateForm
@@ -612,28 +621,55 @@ class FlowCRUDL(SmartCRUDL):
             org = user.get_org()
             triggers_id =  TriggerToFlow.objects.filter(flow = obj).values_list('trigger', flat=True)
             triggers = Trigger.objects.filter(id__in = triggers_id)
-
-            existing_keywords = set(t.keyword for t in triggers.filter(org=org, trigger_type=Trigger.TYPE_KEYWORD, is_archived=False, g
-roups=None))
-
+            existing_keywords = set(t.keyword for t in triggers.filter(org=org, trigger_type=Trigger.TYPE_KEYWORD, is_archived=False, groups=None))
             if len(self.form.cleaned_data['keyword_triggers']) > 0:
                 keywords = set(self.form.cleaned_data['keyword_triggers'].split(','))
 
+            intersection_keywords = existing_keywords.intersection(keywords)
             removed_keywords = existing_keywords.difference(keywords)
+            channels = set(self.form.cleaned_data['channels_used'])
+
             for keyword in removed_keywords:
                 triggers.filter(org=org, keyword=keyword,
                                     groups=None, is_archived=False).update(is_archived=True)
-
             added_keywords = keywords.difference(existing_keywords)
             archived_keywords = [t.keyword for t in triggers.filter(org=org, trigger_type=Trigger.TYPE_KEYWORD,
                                                                         is_archived=True, groups=None)]
             for keyword in added_keywords:
                 # first check if the added keyword is not amongst archived
                 if keyword in archived_keywords:
-                    triggers.filter(org=org,  keyword=keyword, groups=None).update(is_archived=False)
+                    trigger_used = triggers.filter(org=org,  keyword=keyword, groups=None)
+                    trigger_used.update(is_archived=False)
+                    """Check if there is a relation trigger to flow, between trigger_used and this """
+                    trigger_to_flow = TriggerToFlow.objects.filter(trigger = trigger_used, flow = obj).first()
+                    if trigger_to_flow:
+                        #Update the list of channels
+                        channels_existing = set ( c for c in trigger_to_flow.channels.all())
+                        removed_channels = channels_existing.difference(channels)
+                        trigger_to_flow.channels.remove(*removed_channels)
+                        added_channels = channels.difference(channels_existing)
+                    else:
+                        #Create a relation and add channels
+                        trigger_to_flow = TriggerToFlow.objects.create(trigger = trigger, flow = obj)
+                        added_channels = channels
+
+                    trigger_to_flow.channels.add(*added_channels)
                 else:
                     trigger = Trigger.objects.create(org=org, keyword=keyword, trigger_type=Trigger.TYPE_KEYWORD,created_by=user, modified_by=user)
-                    TriggerToFlow.objects.create(trigger = trigger, flow = obj)
+                    trigger_to_flow = TriggerToFlow.objects.create(trigger = trigger, flow = obj)
+                    trigger_to_flow.add(*channels)
+
+            for keyword in intersection_keywords:
+                trigger_used = triggers.filter(org=org,  keyword=keyword, groups=None)
+                """Update trigger """
+                trigger_to_flow = TriggerToFlow.objects.filter(trigger = trigger_used, flow = obj).first()
+                if trigger_to_flow:
+                    #Update the list of channels
+                    channels_existing = set ( c for c in trigger_to_flow.channels.all())
+                    removed_channels = channels_existing.difference(channels)
+                    trigger_to_flow.channels.remove(*removed_channels)
+                    added_channels = channels.difference(channels_existing)
+                    trigger_to_flow.channels.add(*added_channels)
 
             # run async task to update all runs
             from .tasks import update_run_expirations_task
