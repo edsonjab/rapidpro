@@ -99,6 +99,7 @@ class VideoCRUDL(SmartCRUDL):
 
 """
 View to create new account in public_index (disable)
+but maybe we might need after
 class LeadCRUDL(SmartCRUDL):
     actions = ('create',)
     model = Lead
