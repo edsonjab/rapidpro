@@ -125,11 +125,10 @@
                           -trans "The"
                         -else
                           -trans "starts the"
-
+                        %span.attn
+                          %a{href:'{%url "flows.flow_editor" obj.flow.pk%}'}= obj.flow
                         -trans "flow"
-                        -for trigger_to_flow in obj|get_flows
-                            %span.attn
-                            %a{href:'{%url "flows.flow_editor" trigger_to_flow.flow.pk%}'}= trigger_to_flow.flow
+
                         -if obj.groups.all
                           -trans "for contacts in"
                           {{ obj.groups.all|join:", " }}
@@ -195,6 +194,7 @@
       display: inline-block;
       margin-right:6px;
     }
+
 -block extra-script
   {{ block.super }}
 
@@ -205,3 +205,4 @@
        modal.setRedirectOnSuccess(true);
        modal.show();
     });
+    

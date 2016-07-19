@@ -5,13 +5,9 @@ import ttag
 from django import template
 from django.utils.safestring import mark_safe
 from ttag.helpers import AsTag
-from temba.triggers.models import TriggerToFlow
+
 
 register = template.Library()
-
-@register.filter
-def get_flows(trigger):
-    return TriggerToFlow.objects.filter(trigger = trigger)
 
 
 @register.filter

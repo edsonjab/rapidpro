@@ -466,14 +466,8 @@ class BroadcastEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
             except Exception:
                 queryset = queryset.filter(pk=-1)
 
-        queryset= queryset.order_by('-created_on').prefetch_related('urns', 'contacts', 'groups')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+        return queryset.order_by('-created_on').prefetch_related('urns', 'contacts', 'groups')
+
     @classmethod
     def get_read_explorer(cls):
         spec = dict(method="GET",
@@ -488,11 +482,7 @@ class BroadcastEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                           dict(name='before', required=False,
                                help="Only return messages before this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='after', required=False,
-                               help="Only return messages after this date.  ex: 2012-01-28T18:00:00.000"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only return messages after this date.  ex: 2012-01-28T18:00:00.000")]
         return spec
 
     @classmethod
@@ -699,14 +689,8 @@ class MessageEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
             queryset = queryset.exclude(visibility=Msg.VISIBILITY_DELETED)
 
         queryset = queryset.select_related('org', 'contact', 'contact_urn').prefetch_related('labels')
-        queryset = queryset.order_by('-created_on').distinct()
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+        return queryset.order_by('-created_on').distinct()
+
     @classmethod
     def get_read_explorer(cls):
         spec = dict(method="GET",
@@ -741,11 +725,7 @@ class MessageEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                           dict(name='after', required=False,
                                help="Only return messages after this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='relayer', required=False,
-                               help="Only return messages that were received or sent by these channels. (repeatable)  ex: 515,854"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only return messages that were received or sent by these channels. (repeatable)  ex: 515,854")]
 
         return spec
 
@@ -920,12 +900,7 @@ class LabelEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
         uuids = self.request.query_params.getlist('uuid', None)
         if uuids:
             queryset = queryset.filter(uuid__in=uuids)
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
+
         return queryset
 
     @classmethod
@@ -938,11 +913,7 @@ class LabelEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
         spec['fields'] = [dict(name='name', required=False,
                                help="The name of the message label to return.  ex: Priority"),
                           dict(name='uuid', required=False,
-                               help="The UUID of the message label to return. (repeatable) ex: fdd156ca-233a-48c1-896d-a9d594d59b95"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="The UUID of the message label to return. (repeatable) ex: fdd156ca-233a-48c1-896d-a9d594d59b95")]
 
         return spec
 
@@ -1040,12 +1011,7 @@ class CallEndpoint(ListAPIMixin, BaseAPIView):
                 queryset = queryset.filter(channel_id=channel)
             except Exception:
                 queryset = queryset.filter(pk=-1)
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
+
         return queryset
 
     @classmethod
@@ -1066,11 +1032,7 @@ class CallEndpoint(ListAPIMixin, BaseAPIView):
                           dict(name='after', required=False,
                                help="Only return messages after this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='relayer', required=False,
-                               help="Only return messages that were received or sent by these channels.  ex: 515,854"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only return messages that were received or sent by these channels.  ex: 515,854")]
 
         return spec
 
@@ -1215,12 +1177,7 @@ class ChannelEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAPIView)
         countries = splitting_getlist(self.request, 'country')
         if countries:
             queryset = queryset.filter(country__in=countries)
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
+
         return queryset
 
     @classmethod
@@ -1239,11 +1196,7 @@ class ChannelEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAPIView)
                           dict(name='after', required=False,
                                help="Only return channels which were last seen after this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='country', required=False,
-                               help="Only channels which are active in countries with these country codes. (repeatable) ex: RW"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only channels which are active in countries with these country codes. (repeatable) ex: RW")]
 
         return spec
 
@@ -1328,12 +1281,7 @@ class GroupEndpoint(ListAPIMixin, BaseAPIView):
         uuids = self.request.query_params.getlist('uuid', None)
         if uuids:
             queryset = queryset.filter(uuid__in=uuids)
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
+
         return queryset
 
     @classmethod
@@ -1346,11 +1294,7 @@ class GroupEndpoint(ListAPIMixin, BaseAPIView):
         spec['fields'] = [dict(name='name', required=False,
                                help="The name of the Contact Group to return.  ex: Reporters"),
                           dict(name='uuid', required=False,
-                               help="The UUID of the Contact Group to return. (repeatable) ex: 5f05311e-8f81-4a67-a5b5-1501b6d6496a"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="The UUID of the Contact Group to return. (repeatable) ex: 5f05311e-8f81-4a67-a5b5-1501b6d6496a")]
 
         return spec
 
@@ -1540,14 +1484,8 @@ class ContactEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAPIView)
 
         # can't prefetch a custom manager directly, so here we prefetch user groups as new attribute
         user_groups_prefetch = Prefetch('all_groups', queryset=ContactGroup.user_groups.all(), to_attr='prefetched_user_groups')
-        queryset =  queryset.select_related('org').prefetch_related(user_groups_prefetch).order_by('-modified_on', 'pk')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+
+        return queryset.select_related('org').prefetch_related(user_groups_prefetch).order_by('-modified_on', 'pk')
 
     def prepare_for_serialization(self, object_list):
         # initialize caches of all contact fields and URNs
@@ -1578,11 +1516,7 @@ class ContactEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAPIView)
                           dict(name='after', required=False,
                                help="only contacts which have changed on this date or after.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='before', required=False,
-                               help="only contacts which have changed on this date or before. ex: 2012-01-28T18:00:00.000"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="only contacts which have changed on this date or before. ex: 2012-01-28T18:00:00.000")]
 
         return spec
 
@@ -1718,14 +1652,6 @@ class FieldEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
         if key:
             queryset = queryset.filter(key__icontains=key)
 
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-
-
         return queryset
 
     @classmethod
@@ -1736,11 +1662,7 @@ class FieldEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                     slug='contactfield-list',
                     request="")
         spec['fields'] = [dict(name='key', required=False,
-                               help="The key of the Contact Field to return.  ex: state"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="The key of the Contact Field to return.  ex: state")]
 
         return spec
 
@@ -1917,11 +1839,7 @@ class FlowResultsEndpoint(BaseAPIView):
         spec['fields'] = [dict(name='flow', required=False,
                                help="One or more flow ids to filter by.  ex: 234235,230420"),
                           dict(name='ruleset', required=False,
-                               help="One or more rulesets to filter by.  ex: 12412,12451"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="One or more rulesets to filter by.  ex: 12412,12451")]
         return spec
 
 
@@ -2157,14 +2075,8 @@ class FlowRunEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
 
         # use prefetch rather than select_related for foreign keys flow/contact to avoid joins
         queryset = queryset.prefetch_related('flow', rulesets_prefetch, steps_prefetch, 'steps__messages', 'contact')
-        queryset = queryset.order_by('-modified_on')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+
+        return queryset.order_by('-modified_on')
 
     @classmethod
     def get_read_explorer(cls):
@@ -2184,11 +2096,7 @@ class FlowRunEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                           dict(name='before', required=False,
                                help="Only return runs which were modified before this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='after', required=False,
-                               help="Only return runs which were modified after this date.  ex: 2012-01-28T18:00:00.000"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only return runs which were modified after this date.  ex: 2012-01-28T18:00:00.000")]
 
         return spec
 
@@ -2301,14 +2209,8 @@ class CampaignEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                 queryset = queryset.filter(created_on__gte=after)
             except Exception:
                 queryset = queryset.filter(pk=-1)
-        queryset = queryset.select_related('group').order_by('-created_on')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+
+        return queryset.select_related('group').order_by('-created_on')
 
     @classmethod
     def get_read_explorer(cls):
@@ -2322,11 +2224,7 @@ class CampaignEndpoint(ListAPIMixin, CreateAPIMixin, BaseAPIView):
                           dict(name='before', required=False,
                                help="Only return flows which were created before this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='after', required=False,
-                               help="Only return flows which were created after this date.  ex: 2012-01-28T18:00:00.000"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Only return flows which were created after this date.  ex: 2012-01-28T18:00:00.000")]
         return spec
 
     @classmethod
@@ -2486,16 +2384,7 @@ class CampaignEventEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAP
             except Exception:
                 queryset = queryset.filter(pk=-1)
 
-        queryset= queryset.select_related('campaign', 'flow').order_by('-created_on')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
-
-
+        return queryset.select_related('campaign', 'flow').order_by('-created_on')
 
     @classmethod
     def get_read_explorer(cls):
@@ -2512,12 +2401,7 @@ class CampaignEventEndpoint(ListAPIMixin, CreateAPIMixin, DeleteAPIMixin, BaseAP
                           dict(name='before', required=False,
                                help="Only return flows which were created before this date.  ex: 2012-01-28T18:00:00.000"),
                           dict(name='after', required=False,
-                               help="Only return flows which were created after this date.  ex: 2012-01-28T18:00:00.000"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
-
+                               help="Only return flows which were created after this date.  ex: 2012-01-28T18:00:00.000")]
         return spec
 
     @classmethod
@@ -2628,14 +2512,7 @@ class BoundaryEndpoint(ListAPIMixin, BaseAPIView):
             return []
 
         queryset = org.country.get_descendants(include_self=True).order_by('level', 'name')
-        queryset =  queryset.select_related('parent')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+        return queryset.select_related('parent')
 
     def get_serializer_class(self):
         if self.request.GET.get('aliases'):
@@ -2927,14 +2804,7 @@ class FlowEndpoint(ListAPIMixin, BaseAPIView):
         if flow_type:
             queryset = queryset.filter(flow_type__in=flow_type)
 
-        queryset = queryset.prefetch_related('labels')
-        from_result = self.request.query_params.getlist('from', None)
-        to_result = self.request.query_params.getlist('to', None)
-        if from_result or to_result:
-            from_result = 0 if not from_result else int(from_result[0])
-            to_result = queryset.count() if not to_result else int(to_result[0])
-            queryset = queryset[from_result:to_result]
-        return queryset
+        return queryset.prefetch_related('labels')
 
     @classmethod
     def get_read_explorer(cls):
@@ -2952,11 +2822,7 @@ class FlowEndpoint(ListAPIMixin, BaseAPIView):
                           dict(name='label', required=False,
                                help="Only return flows with this label. (repeatable) ex: Polls"),
                           dict(name='archived', required=False,
-                               help="Filter returned flows based on whether they are archived. ex: Y"),
-                          dict(name='from', required=False,
-                               help="Only return items after this postion. ex: 1"),
-                          dict(name='to', required=False,
-                               help="Only return items before this postion. ex: 100")]
+                               help="Filter returned flows based on whether they are archived. ex: Y")]
 
         return spec
 

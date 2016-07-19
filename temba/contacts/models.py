@@ -193,19 +193,13 @@ class ContactField(SmartModel):
 
 NEW_CONTACT_VARIABLE = "@new_contact"
 
-def default_channel(org):
 
-    return channel
 class Contact(TembaModel):
     name = models.CharField(verbose_name=_("Name"), max_length=128, blank=True, null=True,
                             help_text=_("The name of this contact"))
 
     org = models.ForeignKey(Org, verbose_name=_("Org"), related_name="org_contacts",
                             help_text=_("The organization that this contact belongs to"))
-
-    channels = models.ManyToManyField(Channel, verbose_name=_("Channel")
-, related_name="channel_contacts",
-                           help_text= _("The channlen that this contact will use"), blank = True)
 
     is_blocked = models.BooleanField(verbose_name=_("Is Blocked"), default=False,
                                      help_text=_("Whether this contact has been blocked"))
@@ -219,7 +213,6 @@ class Contact(TembaModel):
     language = models.CharField(max_length=3, verbose_name=_("Language"), null=True, blank=True,
                                 help_text=_("The preferred language for this contact"))
 
-
     simulation = False
 
     NAME = 'name'
@@ -232,13 +225,6 @@ class Contact(TembaModel):
     RESERVED_FIELDS = [NAME, FIRST_NAME, PHONE, LANGUAGE,
                        'created_by', 'modified_by', 'org', UUID, 'groups'] + [c[0] for c in IMPORT_HEADERS]
 
-    def default_channel(self):
-        channel = Channel.objects.filter(org = self.org).order_by('?').first()
-        self.channels.add(channel)
-    def save(self, *args, **kwargs):
-        super(Contact,self).save(*args, **kwargs)
-        if not self.channels.all():
-            self.default_channel()
     @classmethod
     def get_contacts(cls, org, blocked=False):
         return Contact.objects.filter(org=org, is_active=True, is_test=False, is_blocked=blocked)
@@ -256,12 +242,7 @@ class Contact(TembaModel):
         Define Contact.user_groups to only refer to user groups
         """
         return self.all_groups.filter(group_type=ContactGroup.TYPE_USER_DEFINED)
-    @property
-    def user_channels(self):
-        """
-        Define Contact.user_groups to only refer to user groups
-        """
-        return self.channels.all()
+
     def as_json(self):
         obj = dict(id=self.pk, name=unicode(self))
 
@@ -486,7 +467,7 @@ class Contact(TembaModel):
         return existing[0].contact if existing else None
 
     @classmethod
-    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False, channels=None):
+    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False):
         """
         Gets or creates a contact with the given URNs
         """
@@ -622,11 +603,6 @@ class Contact(TembaModel):
                 kwargs = dict(org=org, name=name, language=language, is_test=is_test,
                               created_by=user, modified_by=user)
                 contact = Contact.objects.create(**kwargs)
-                for channel in contact.channels.all():
-                    contact.channels.remove(channel)
-                for channel in channels :
-                    contact.channels.add(channel)
-                contact.save()
                 updated_attrs = kwargs.keys()
 
                 # add attribute which allows import process to track new vs existing
@@ -709,103 +685,6 @@ class Contact(TembaModel):
             base_queryset = Contact.objects.filter(org=org, is_blocked=False, is_active=True, is_test=False)
 
         return search.contact_search(org, query, base_queryset)
-
-    @classmethod
-    def get_org_by_id(cls, id_org):
-        """Wrapper to obtain an org, without import in files (smartmin)"""
-        return Org.objects.get(id = id_org)
-    @classmethod
-    def create_instance_by_admin(cls, field_dict,is_admin,org,country):
-        """
-        Creates or updates a contact from the given field values during an import
-        """
-        if 'created_by' not in field_dict:
-            raise ValueError("Import fields dictionary must include org and created_by")
-        user = field_dict.pop('created_by')
-        uuid = field_dict.pop('uuid', None)
-        urns = []
-        possible_urn_headers = [scheme[0] for scheme in IMPORT_HEADERS]
-        # prevent urns update on anon org
-        if uuid and org.is_anon and not is_admin:
-            possible_urn_headers = []
-
-        for urn_header in possible_urn_headers:
-            value = None
-            if urn_header in field_dict:
-                value = field_dict[urn_header]
-                del field_dict[urn_header]
-
-            if not value:
-                continue
-
-            urn_scheme = IMPORT_HEADER_TO_SCHEME[urn_header]
-
-            if urn_scheme == TEL_SCHEME:
-
-                value = regex.sub(r'[ \-()]+', '', value, regex.V0)
-
-                # at this point the number might be a decimal, something that looks like '18094911278.0' due to
-                # excel formatting that field as numeric.. try to parse it into an int instead
-                try:
-                    value = str(int(float(value)))
-                except Exception:  # pragma: no cover
-                    # oh well, neither of those, stick to the plan, maybe we can make sense of it below
-                    pass
-
-                # only allow valid numbers
-                (normalized, is_valid) = ContactURN.normalize_number(value, country)
-
-                if not is_valid:
-                    raise SmartImportRowError("Invalid Phone number %s" % value)
-
-                # in the past, test contacts have ended up in exports. Don't re-import them
-                if value == OLD_TEST_CONTACT_TEL:
-                    raise SmartImportRowError("Ignored test contact")
-
-            search_contact = Contact.from_urn(org, urn_scheme, value, country)
-
-            # if this is an anonymous org, don't allow updating
-            if org.is_anon and search_contact and not is_admin:
-                raise SmartImportRowError("Other existing contact on anonymous organization")
-
-            urns.append((urn_scheme, value))
-
-        if not urns and not (org.is_anon or uuid):
-            error_str = "Missing any valid URNs"
-            error_str += "; at least one among %s should be provided" % ", ".join(possible_urn_headers)
-
-            raise SmartImportRowError(error_str)
-
-        # title case our name
-        name = field_dict.get(Contact.NAME, None)
-        if name:
-            name = " ".join([_.capitalize() for _ in name.split()])
-        language = field_dict.get(Contact.LANGUAGE)
-        if language is not None and len(language) != 3:
-            language = None  # ignore anything that's not a 3-letter code
-
-        # create new contact or fetch existing one
-        contact = Contact.get_or_create(org, user, name, uuid=uuid, urns=urns, language=language, force_urn_update=True)
-
-        # if they exist and are blocked, unblock them
-        if contact.is_blocked:
-            contact.unblock(user)
-
-        for key in field_dict.keys():
-            # ignore any reserved fields
-            if key in Contact.RESERVED_FIELDS:
-                continue
-
-            value = field_dict[key]
-
-            # date values need converted to localized strings
-            if isinstance(value, datetime.date):
-                value = org.format_date(value, True)
-
-            contact.set_field(user, key, value)
-
-        return contact
-
 
     @classmethod
     def create_instance(cls, field_dict):
@@ -1004,12 +883,33 @@ class Contact(TembaModel):
                 import_params = json.loads(task.import_params)
             except Exception:
                 pass
+
+        # this file isn't good enough, lets write it to local disk
+        from django.conf import settings
+        from uuid import uuid4
+
+        # make sure our tmp directory is present (throws if already present)
+        try:
+            os.makedirs(os.path.join(settings.MEDIA_ROOT, 'tmp'))
+        except Exception:
+            pass
+
+        # rewrite our file to local disk
+        tmp_file = os.path.join(settings.MEDIA_ROOT, 'tmp/%s' % str(uuid4()))
+        filename.open()
+
+        out_file = open(tmp_file, 'w')
+        out_file.write(filename.read())
+        out_file.close()
+
         import_results = dict()
 
         try:
-            contacts = cls.import_csv_file(filename.name, user, import_params, log, import_results)
+            contacts = cls.import_xls(open(tmp_file), user, import_params, log, import_results)
         except XLRDError:
-            contacts = cls.import_raw_csv(filename.name, user, import_params, log, import_results)
+            contacts = cls.import_raw_csv(open(tmp_file), user, import_params, log, import_results)
+        finally:
+            os.remove(tmp_file)
 
         # don't create a group if there are no contacts
         if not contacts:
@@ -1686,7 +1586,6 @@ class UserContactGroupManager(models.Manager):
     def get_queryset(self):
         return super(UserContactGroupManager, self).get_queryset().filter(group_type=ContactGroup.TYPE_USER_DEFINED,
                                                                           is_active=True)
-
 
 
 class ContactGroup(TembaModel):

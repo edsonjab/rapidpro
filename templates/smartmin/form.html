@@ -40,9 +40,6 @@
     </fieldset>
     {% endblock fields %}
 
-    {%block list_form%}
-    {%end list_form%}
-
     {% block post-fields %}
     {% endblock post-fields %}
 
@@ -73,7 +70,7 @@
 <script>
   // attach a submit handler to the form
   $("#smartmin_form").submit(function(event) {
-
+  
   // stop form from submitting normally
   event.preventDefault();
   event.stopPropagation();

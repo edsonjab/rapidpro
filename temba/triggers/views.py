@@ -136,12 +136,9 @@ class KeywordTriggerForm(GroupBasedTriggerForm):
     keyword = forms.CharField(max_length=16, required=True, label=_("Keyword"),
                               help_text=_("The first word of the message text"))
 
-    def __init__(self, user, remove_flow = False, *args, **kwargs):
+    def __init__(self, user, *args, **kwargs):
         flows = Flow.objects.filter(org=user.get_org(), is_active=True, is_archived=False, flow_type__in=[Flow.FLOW, Flow.VOICE])
         super(KeywordTriggerForm, self).__init__(user, flows, *args, **kwargs)
-        if remove_flow:
-            self.fields.pop('flow')
-
 
     def get_existing_triggers(self, cleaned_data):
         keyword = cleaned_data.get('keyword', '').strip()
@@ -163,13 +160,9 @@ class KeywordTriggerForm(GroupBasedTriggerForm):
         return data
 
     class Meta(BaseTriggerForm.Meta):
-        fields = ('keyword', 'groups')
+        fields = ('keyword', 'flow', 'groups')
 
-class KeywordTriggerFormWrapper(KeywordTriggerForm):
-    def __init__(self, user,  *args, **kwargs):
-        super(KeywordTriggerFormWrapper, self).__init__( remove_flow = True,user = user, flows, *args, **kwargs)
-    class Meta(KeywordTriggerForm.Meta):
-        fields = ('keyword','groups' )
+
 class RegisterTriggerForm(BaseTriggerForm):
     """
     Wizard form that creates keyword trigger which starts contacts in a newly created flow which adds them to a group
@@ -335,7 +328,7 @@ class TriggerCRUDL(SmartCRUDL):
 
     class Update(ModalMixin, OrgMixin, SmartUpdateView):
         success_message = ''
-        trigger_forms = {Trigger.TYPE_KEYWORD: KeywordTriggerFormWrapper,
+        trigger_forms = {Trigger.TYPE_KEYWORD: KeywordTriggerForm,
                          Trigger.TYPE_SCHEDULE: ScheduleTriggerForm,
                          Trigger.TYPE_MISSED_CALL: DefaultTriggerForm,
                          Trigger.TYPE_INBOUND_CALL: InboundCallTriggerForm,
@@ -352,15 +345,6 @@ class TriggerCRUDL(SmartCRUDL):
                 context['days'] = self.get_object().schedule.explode_bitmask()
             context['user_tz'] = get_current_timezone_name()
             context['user_tz_offset'] = int(timezone.localtime(timezone.now()).utcoffset().total_seconds() / 60)
-            list_flow_form = []
-            from temba.flows.views import FlowUpdateForm
-            from temba.triggers.models import TriggerToFlow
-            #Select all flows associated to this trigger
-            trigger_to_flows = TriggerToFlow.objects.filter(trigger = self.object)
-            for t_to_flow in trigger_to_flows:
-                list_flow_form.append(FlowUpdateForm(instance = t_to_flow.flow, user = self.request.user, prefix = t_to_flow.flow.id))
-            context['list_flow'] = list_flow_form
-
             return context
 
         def form_invalid(self, form):
@@ -385,26 +369,12 @@ class TriggerCRUDL(SmartCRUDL):
             return kwargs
 
         def form_valid(self, form):
-            from temba.triggers.models import TriggerToFlow
-            from temba.flows.views import FlowUpdateForm
-            trigger_to_flows = TriggerToFlow.objects.filter(trigger = self.object)
-            for t_to_flow in trigger_to_flows:
-               id_str = str(t_to_flow.flow.id)
-               channels_id = self.request.POST.get(id_str+'-channels_used')
-               channels = set(Channel.objects.filter(id__in = channels_id))
-               #Update channles
-               channels_existing = set ( c for c in t_to_flow.channels.all())
-               removed_channels = channels_existing.difference(channels)
-               t_to_flow.channels.remove(*removed_channels)
-               added_channels = channels.difference(channels_existing)
-               t_to_flow.channels.add(*added_channels)
-               #Update name
-               name = self.request.POST.get(id_str+'-name')
-               t_to_flow.flow.name = name
-               t_to_flow.flow.save()
-
             trigger = self.object
             trigger_type = trigger.trigger_type
+
+            if trigger_type == Trigger.TYPE_MISSED_CALL or trigger_type == Trigger.TYPE_CATCH_ALL:
+                trigger.flow = form.cleaned_data['flow']
+                trigger.save()
 
             if trigger_type == Trigger.TYPE_SCHEDULE:
                 schedule = trigger.schedule
@@ -549,11 +519,10 @@ class TriggerCRUDL(SmartCRUDL):
             org = self.request.user.get_org()
             group_flow = Flow.create_join_group(org, self.request.user, join_group, send_msg, start_flow)
 
-            trigger = Trigger.objects.create(created_by=self.request.user, modified_by=self.request.user,
+            Trigger.objects.create(created_by=self.request.user, modified_by=self.request.user,
                                    org=self.request.user.get_org(), keyword=keyword,
-                                   trigger_type=Trigger.TYPE_KEYWORD)
-
-            TriggerToFlow.objects.create(trigger = trigger, flow = group_flow)
+                                   trigger_type=Trigger.TYPE_KEYWORD,
+                                   flow=group_flow)
 
             analytics.track(self.request.user.username, 'temba.trigger_created_register', dict(name=join_group.name))
 
@@ -620,12 +589,12 @@ class TriggerCRUDL(SmartCRUDL):
 
             recipients = self.form.cleaned_data['omnibox']
 
-            trigger = Trigger.objects.create(org=self.request.user.get_org(),
+            trigger = Trigger.objects.create(flow=self.form.cleaned_data['flow'],
+                                             org=self.request.user.get_org(),
                                              schedule=schedule,
                                              trigger_type=Trigger.TYPE_SCHEDULE,
                                              created_by=self.request.user,
                                              modified_by=self.request.user)
-            TriggerToFlow.objects.create(trigger = trigger, flow =self.form.cleaned_data['flow'])
 
             for group in recipients['groups']:
                 trigger.groups.add(group)
@@ -687,8 +656,8 @@ class TriggerCRUDL(SmartCRUDL):
                                    is_active=True).update(is_archived=True)
 
             # then create a new missed call trigger
-            trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_MISSED_CALL)
-            TriggerToFlow.objects.create(trigger = trigger, flow = form.cleaned_data['flow'])
+            Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_MISSED_CALL,
+                                   flow=form.cleaned_data['flow'])
 
             analytics.track(self.request.user.username, 'temba.trigger_created_missed_call')
 
@@ -717,9 +686,9 @@ class TriggerCRUDL(SmartCRUDL):
 
             # then create a new catch all trigger
             trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org,
-                                             trigger_type=Trigger.TYPE_CATCH_ALL)
+                                             trigger_type=Trigger.TYPE_CATCH_ALL,
+                                             flow=form.cleaned_data['flow'])
 
-            TriggerToFlow.objects.create(trigger = trigger, flow = form.cleaned_data['flow'])
             # add all the groups we are relevant for
             for group in groups:
                 trigger.groups.add(group)
@@ -742,9 +711,8 @@ class TriggerCRUDL(SmartCRUDL):
             user = self.request.user
             org = user.get_org()
 
-            trigger = Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_FOLLOW,
-                                   channel=form.cleaned_data['channel'])
-            TriggerToFlow.objects.create(trigger = trigger, flow =form.cleaned_data['flow'] )
+            Trigger.objects.create(created_by=user, modified_by=user, org=org, trigger_type=Trigger.TYPE_FOLLOW,
+                                   flow=form.cleaned_data['flow'], channel=form.cleaned_data['channel'])
 
             analytics.track(self.request.user.username, 'temba.trigger_created_follow')
 

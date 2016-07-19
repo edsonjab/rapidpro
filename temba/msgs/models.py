@@ -334,8 +334,8 @@ class Broadcast(models.Model):
 
         return commands
 
-    def send(self, channel = None, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
-             created_on=None, base_language=None, partial_recipients=None, use_channel_by_contact=None):
+    def send(self, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
+             created_on=None, base_language=None, partial_recipients=None):
         """
         Sends this broadcast by creating outgoing messages for each recipient.
         """
@@ -403,23 +403,21 @@ class Broadcast(models.Model):
 
             # find the right text to send
             text = Language.get_localized_text(text_translations, preferred_languages, self.text)
-            channel_to_use = channel if channel else self.channel
+
             try:
                 msg = Msg.create_outgoing(org,
                                           self.created_by,
                                           recipient,
                                           text,
                                           broadcast=self,
-                                          channel=channel_to_use,
+                                          channel=self.channel,
                                           response_to=response_to,
                                           message_context=message_context,
                                           status=status,
                                           msg_type=msg_type,
                                           insert_object=False,
                                           priority=priority,
-                                          created_on=created_on,
-                                          use_channel_by_contact = use_channel_by_contact
-                                          )
+                                          created_on=created_on)
 
             except UnreachableException:
                 # there was no way to reach this contact, do not create a message
@@ -455,7 +453,6 @@ class Broadcast(models.Model):
         if not partial_recipients:
             self.status = QUEUED if len(recipients) > 0 else SENT
             self.save(update_fields=('status',))
-
 
     def update(self):
         """
@@ -1196,7 +1193,7 @@ class Msg(models.Model):
     @classmethod
     def create_outgoing(cls, org, user, recipient, text, broadcast=None, channel=None, priority=SMS_NORMAL_PRIORITY,
                         created_on=None, response_to=None, message_context=None, status=PENDING, insert_object=True,
-                        media=None, topup_id=None, msg_type=INBOX, use_channel_by_contact = None):
+                        media=None, topup_id=None, msg_type=INBOX):
 
         if not org or not user:  # pragma: no cover
             raise ValueError("Trying to create outgoing message with no org or user")
@@ -1215,7 +1212,7 @@ class Msg(models.Model):
                 if msg_type == IVR:
                     channel = org.get_call_channel()
                 else:
-                    channel = org.get_send_channel(contact_urn=contact_urn,use_channel_by_contact = use_channel_by_contact)
+                    channel = org.get_send_channel(contact_urn=contact_urn)
 
                 if not channel and not contact.is_test:
                     raise ValueError("No suitable channel available for this org")

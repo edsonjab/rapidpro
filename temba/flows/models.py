@@ -745,9 +745,7 @@ class Flow(TembaModel):
 
         # release any triggers that depend on this flow
         from temba.triggers.models import Trigger
-        triggers_id =  TriggerToFlow.objects.filter(flow = obj).values_list('trigger', flat=True)
-        triggers = Trigger.objects.filter(id__in = triggers_id)
-        for trigger in triggers.filter(is_active=True):
+        for trigger in Trigger.objects.filter(flow=self, is_active=True):
             trigger.release()
 
         # delete our results in the background
@@ -1059,9 +1057,7 @@ class Flow(TembaModel):
 
         # archive our triggers as well
         from temba.triggers.models import Trigger
-        triggers_id = TriggerToFlow.object.filter(flow = self).values_list('trigger', flat=True)
-        triggers = Trigger.objects.filter(id__in = triggers_id)
-        triggers.update(is_archived=True)
+        Trigger.objects.filter(flow=self).update(is_archived=True)
 
     def restore(self):
         if self.flow_type == Flow.VOICE:
@@ -1827,10 +1823,7 @@ class Flow(TembaModel):
 
         # and any of our triggers that reference us
         from temba.triggers.models import Trigger
-        triggers_id =  TriggerToFlow.objects.filter(flow = self).values_list('trigger', flat=True)
-        triggers = Trigger.objects.filter(id__in = triggers_id)
-
-        triggers = set(triggers.filter(org=self.org, is_archived=False, is_active=True))
+        triggers = set(Trigger.objects.filter(org=self.org, flow=self, is_archived=False, is_active=True))
 
         dependencies['flows'].update(flows)
         dependencies['groups'].update(groups)
@@ -4863,7 +4856,7 @@ class SendAction(VariableContactAction):
 
                 broadcast = Broadcast.create(flow.org, flow.modified_by, message_text, recipients,
                                              language_dict=language_dict)
-                broadcast.send(trigger_send=False, message_context=message_context, base_language=flow.base_language, use_channel_by_contact=True)
+                broadcast.send(trigger_send=False, message_context=message_context, base_language=flow.base_language)
                 return list(broadcast.get_messages())
 
             else:

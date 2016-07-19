@@ -64,7 +64,6 @@ def send_message_auto_complete_processor(request):
 
 class SendMessageForm(Form):
     omnibox = OmniboxField()
-    channel = forms.TextInput
     text = forms.CharField(widget=forms.Textarea, max_length=640)
     schedule = forms.BooleanField(widget=forms.HiddenInput, required=False)
 
@@ -75,13 +74,9 @@ class SendMessageForm(Form):
 
     def is_valid(self):
         valid = super(SendMessageForm, self).is_valid()
-        print self.data
         if valid:
             if 'omnibox' not in self.data or len(self.data['omnibox'].strip()) == 0:
                 self.errors['__all__'] = self.error_class([unicode(_("At least one recipient is required"))])
-                return False
-            if 'channel' not in self.data or len(self.data['channel'].strip()) == 0:
-                self.errors['__all__'] = self.error_class([unicode(_("At least one channel  is required"))])
                 return False
         return valid
 
@@ -243,7 +238,7 @@ class BroadcastCRUDL(SmartCRUDL):
     class Send(OrgPermsMixin, SmartFormView):
         title = _("Send Message")
         form_class = SendMessageForm
-        fields = ('omnibox', 'text', 'schedule', 'channel')
+        fields = ('omnibox', 'text', 'schedule')
         success_url = '@msgs.msg_inbox'
         submit_button_name = _('Send')
 
@@ -255,8 +250,7 @@ class BroadcastCRUDL(SmartCRUDL):
             response = super(BroadcastCRUDL.Send, self).pre_process(*args, **kwargs)
             org = self.request.user.get_org()
             simulation = self.request.REQUEST.get('simulation', 'false') == 'true'
-            channels = self.request.REQUEST.get('channel').split(',')
-            self.channels = map(int, channels)
+
             if simulation:
                 return response
 
@@ -284,6 +278,7 @@ class BroadcastCRUDL(SmartCRUDL):
                 return HttpResponse(json.dumps(dict(status="error", errors=form.errors)), content_type='application/json', status=400)
             else:
                 return super(BroadcastCRUDL.Send, self).form_invalid(form)
+
         def form_valid(self, form):
             self.form = form
             user = self.request.user
@@ -295,8 +290,8 @@ class BroadcastCRUDL(SmartCRUDL):
             groups = list(omnibox['groups'])
             contacts = list(omnibox['contacts'])
             urns = list(omnibox['urns'])
-
             recipients = list()
+
             if simulation:
                 # when simulating make sure we only use test contacts
                 for contact in contacts:
@@ -309,25 +304,15 @@ class BroadcastCRUDL(SmartCRUDL):
                     recipients.append(contact)
                 for urn in urns:
                     recipients.append(urn)
-            if self.channels:
-                """One or more channels specified """
-                self.channels = Channel.objects.filter(id__in = self.channels)
-                for channel in self.channels:
-                    schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
-                    broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, channel=channel
-                                                 ,schedule=schedule)
 
-                    if not has_schedule:
-                        self.post_save(broadcast, channel)
-                        super(BroadcastCRUDL.Send, self).form_valid(form)
-            else :
-                schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
-                broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients, schedule=schedule)
+            schedule = Schedule.objects.create(created_by=user, modified_by=user) if has_schedule else None
+            broadcast = Broadcast.create(user.get_org(), user, self.form.cleaned_data['text'], recipients,
+                                         schedule=schedule)
 
-                if not has_schedule:
-                    self.post_save(broadcast)
-                    super(BroadcastCRUDL.Send, self).form_valid(form)
-                    
+            if not has_schedule:
+                self.post_save(broadcast)
+                super(BroadcastCRUDL.Send, self).form_valid(form)
+
             analytics.track(self.request.user.username, 'temba.broadcast_created',
                             dict(contacts=len(contacts), groups=len(groups), urns=len(urns)))
 
@@ -339,10 +324,10 @@ class BroadcastCRUDL(SmartCRUDL):
                     return HttpResponseRedirect(reverse('msgs.broadcast_schedule_read', args=[broadcast.pk]))
                 return HttpResponseRedirect(self.get_success_url())
 
-        def post_save(self, obj, channel= None):
+        def post_save(self, obj):
             # fire our send in celery
             from temba.msgs.tasks import send_broadcast_task
-            send_broadcast_task.delay(obj.pk,channel)
+            send_broadcast_task.delay(obj.pk)
             return obj
 
         def get_form_kwargs(self):

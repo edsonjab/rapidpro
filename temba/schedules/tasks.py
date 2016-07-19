@@ -4,7 +4,6 @@ from django.utils import timezone
 from djcelery_transactions import task
 from redis_cache import get_redis_connection
 from .models import Schedule
-from temba.msgs.models import Msg
 from django.core.exceptions import ObjectDoesNotExist
 
 
@@ -42,7 +41,7 @@ def check_schedule_task(sched_id=None):
                             broadcast.fire()
 
                         elif trigger:
-                            trigger.fire(Msg.objects.filter(schedule = sched).first())
+                            trigger.fire()
 
                         else:
                             print "Schedule had nothing interesting to fire"
