@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from django.conf.urls import url
 from rest_framework.urlpatterns import format_suffix_patterns
 from .views import api, ApiExplorerView, AuthenticateEndpoint, OrgEndpoint
-from .views import BroadcastEndpoint, MessageEndpoint, MessageBulkActionEndpoint, LabelEndpoint
+from .views import BroadcastEndpoint, MessageEndpoint, MessageBulkActionEndpoint, LabelEndpoint,MessageResendActionEndpoint
 from .views import CallEndpoint, ContactEndpoint, ContactBulkActionEndpoint
 from .views import FlowEndpoint, FlowResultsEndpoint, FlowRunEndpoint, FlowDefinitionEndpoint, FlowStepEndpoint
 from .views import GroupEndpoint, FieldEndpoint
@@ -17,6 +17,7 @@ urlpatterns = [
     url(r'^/broadcasts$', BroadcastEndpoint.as_view(), name='api.v1.broadcasts'),
     url(r'^/messages$', MessageEndpoint.as_view(), name='api.v1.messages'),
     url(r'^/message_actions$', MessageBulkActionEndpoint.as_view(), name='api.v1.message_actions'),
+    url(r'^/message_resends$', MessageResendActionEndpoint.as_view(), name='api.v1.message_resends'),
     url(r'^/sms$', MessageEndpoint.as_view(), name='api.v1.sms'),  # deprecated
     url(r'^/labels$', LabelEndpoint.as_view(), name='api.v1.labels'),
     url(r'^/flows$', FlowEndpoint.as_view(), name='api.v1.flows'),
