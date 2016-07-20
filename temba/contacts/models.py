@@ -201,6 +201,10 @@ class Contact(TembaModel):
     org = models.ForeignKey(Org, verbose_name=_("Org"), related_name="org_contacts",
                             help_text=_("The organization that this contact belongs to"))
 
+    channels = models.ManyToManyField(Channel, verbose_name=_("Channel")
+, related_name="channel_contacts",
+                           help_text= _("The channlen that this contact will use"), blank = True)
+
     is_blocked = models.BooleanField(verbose_name=_("Is Blocked"), default=False,
                                      help_text=_("Whether this contact has been blocked"))
 
@@ -212,6 +216,7 @@ class Contact(TembaModel):
 
     language = models.CharField(max_length=3, verbose_name=_("Language"), null=True, blank=True,
                                 help_text=_("The preferred language for this contact"))
+
 
     simulation = False
 
@@ -225,6 +230,33 @@ class Contact(TembaModel):
     RESERVED_FIELDS = [NAME, FIRST_NAME, PHONE, LANGUAGE,
                        'created_by', 'modified_by', 'org', UUID, 'groups'] + [c[0] for c in IMPORT_HEADERS]
 
+
+    ############################################################################
+    ###############################     Mx Abierto      ########################
+    ############################################################################
+    def default_channel(self):
+        """ When contact is created we assign a channel with distribution uniform
+        After, if we need to send something, we try with this channel, if is not
+        the type of the channel required, we select randomly another channel with
+        the type required"""
+        channel = Channel.objects.filter(org = self.org).order_by('?').first()
+        self.channels.add(channel)
+
+
+    def save(self, *args, **kwargs):
+        if not self.channels:
+            self.default_channel()
+        super(Contact,self).save(*args, **kwargs)
+
+    @property
+    def user_channels(self):
+        """
+        Define Contact.user_channels to refer to user channels relation
+        """
+        return Channel.objects.filter(org =self.org)
+    ############################################################################
+    ###############################     Mx Abierto (END)  ######################
+    ############################################################################
     @classmethod
     def get_contacts(cls, org, blocked=False):
         return Contact.objects.filter(org=org, is_active=True, is_test=False, is_blocked=blocked)
@@ -242,7 +274,7 @@ class Contact(TembaModel):
         Define Contact.user_groups to only refer to user groups
         """
         return self.all_groups.filter(group_type=ContactGroup.TYPE_USER_DEFINED)
-
+    
     def as_json(self):
         obj = dict(id=self.pk, name=unicode(self))
 
@@ -1651,6 +1683,7 @@ class UserContactGroupManager(models.Manager):
     def get_queryset(self):
         return super(UserContactGroupManager, self).get_queryset().filter(group_type=ContactGroup.TYPE_USER_DEFINED,
                                                                           is_active=True)
+
 
 
 class ContactGroup(TembaModel):
