@@ -244,9 +244,9 @@ class Contact(TembaModel):
 
 
     def save(self, *args, **kwargs):
-        if not self.channels:
-            self.default_channel()
         super(Contact,self).save(*args, **kwargs)
+        if not self.channels.all():
+            self.default_channel()
 
     @property
     def user_channels(self):
@@ -499,7 +499,7 @@ class Contact(TembaModel):
         return existing[0].contact if existing else None
 
     @classmethod
-    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False):
+    def get_or_create(cls, org, user, name=None, urns=None, incoming_channel=None, uuid=None, language=None, is_test=False, force_urn_update=False, channels=None):
         """
         Gets or creates a contact with the given URNs
         """
@@ -629,6 +629,11 @@ class Contact(TembaModel):
                     contact.modified_by = user
                     contact.modified_on = timezone.now()
                     contact.save(update_fields=updated_attrs + ['modified_by', 'modified_on'])
+                if channels:
+                    for channel in contact.channels.all():
+                        contact.channels.remove(channel)
+                    for channel in channels :
+                    contact.channels.add(channel)
 
             # otherwise create new contact with all URNs
             else:

@@ -373,7 +373,7 @@ class Org(SmartModel):
         else:
             return channel
 
-    def get_channel_for_role(self, role, scheme=None, contact_urn=None, country_code=None):
+    def get_channel_for_role(self, role, scheme=None, contact_urn=None, country_code=None, use_channel_by_contact=None):
         from temba.contacts.models import TEL_SCHEME
         from temba.channels.models import SEND
         from temba.contacts.models import ContactURN
@@ -432,14 +432,19 @@ class Org(SmartModel):
                             break
 
                 if channel:
+                    print "No se usa un canal previo, se usa el canal %s %s" %(channel.id, channel.address)
+                    if use_channel_by_contact:
+                        channel = channel.get_random_channel_with_this_charac(contact_urn.contact)
+                        print "Usara un canal random:"
+                    print "Se usara el canal : %s %s" %(channel.id, channel.address)
                     return self.get_channel_delegate(channel, SEND)
 
         # get any send channel without any country or URN hints
         return self.get_channel(scheme, country_code, role)
 
-    def get_send_channel(self, scheme=None, contact_urn=None, country_code=None):
+    def get_send_channel(self, scheme=None, contact_urn=None, country_code=None, use_channel_by_contact=None):
         from temba.channels.models import SEND
-        return self.get_channel_for_role(SEND, scheme=scheme, contact_urn=contact_urn, country_code=country_code)
+        return self.get_channel_for_role(SEND, scheme=scheme, contact_urn=contact_urn, country_code=country_code, use_channel_by_contact=use_channel_by_contact)
 
     def get_receive_channel(self, scheme, contact_urn=None, country_code=None):
         from temba.channels.models import RECEIVE

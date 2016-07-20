@@ -978,7 +978,7 @@ class ContactCRUDL(SmartCRUDL):
     class Create(ModalMixin, OrgPermsMixin, SmartCreateView):
         form_class = ContactForm
         exclude = ('is_active', 'uuid', 'language', 'org', 'fields', 'is_blocked', 'is_failed',
-                   'created_by', 'modified_by', 'is_test', 'channel')
+                   'created_by', 'modified_by', 'is_test')
         success_message = ''
         submit_button_name = _("Create")
 
@@ -1002,8 +1002,8 @@ class ContactCRUDL(SmartCRUDL):
                     scheme = field_key.split('__')[1]
                     # scheme = field_key[7:field_key.rfind('__')]
                     urns.append((scheme, value))
-
-            Contact.get_or_create(obj.org, self.request.user, obj.name, urns)
+            new_channels = self.form.cleaned_data.get('channels')
+            Contact.get_or_create(obj.org, self.request.user, obj.name, urns, channels = new_channels)
 
     class Update(ModalMixin, OrgObjPermsMixin, SmartUpdateView):
         form_class = UpdateContactForm

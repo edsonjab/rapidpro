@@ -4856,7 +4856,7 @@ class SendAction(VariableContactAction):
 
                 broadcast = Broadcast.create(flow.org, flow.modified_by, message_text, recipients,
                                              language_dict=language_dict)
-                broadcast.send(trigger_send=False, message_context=message_context, base_language=flow.base_language)
+                broadcast.send(trigger_send=False, message_context=message_context, base_language=flow.base_language, use_channel_by_contact=True)
                 return list(broadcast.get_messages())
 
             else:
