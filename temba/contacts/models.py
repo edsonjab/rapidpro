@@ -935,7 +935,7 @@ class Contact(TembaModel):
         import_results = dict()
 
         try:
-	    """ We only accept csv files""""
+	    """ We only accept csv files"""
             contacts = cls.import_csv_file(filename.name, user, import_params, log, import_results)
         except XLRDError:
             contacts = cls.import_raw_csv(filename.name, user, import_params, log, import_results)
