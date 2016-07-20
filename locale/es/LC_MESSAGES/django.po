@@ -5326,9 +5326,10 @@ msgid "Update Contact Group"
 msgstr "Actualizar Grupo de Contactos"
 
 #: templates/contacts/contact_import.haml:14
-msgid "You can import your contacts from an XLS file you create in Excel."
+msgid "You can import your contacts from an CSV file you create in Excel."
 msgstr ""
-"Puede importar sus contactos de un archivo XLS que haya creado en Excel. "
+"Puede importar sus contactos de un archivo CSV que haya creado en Excel."
+"Excel permite guardar los archivos en ese formato"
 
 #: templates/contacts/contact_import.haml:18
 msgid ""
@@ -5424,7 +5425,7 @@ msgstr ""
 msgid ""
 "\n"
 "                  You can download\n"
-"                  <a href='%(STATIC_URL)sexamples/contacts.xls'>this Excel "
+"                  <a href='%(STATIC_URL)sexamples/contacts.csv'>this Excel "
 "template</a>\n"
 "                  as a sample.\n"
 "                "
@@ -5433,7 +5434,7 @@ msgstr ""
 #: templates/contacts/contact_import.haml:147
 #: templates/orgs/org_import.haml:61
 msgid "Choose File"
-msgstr "Elegir archivo"
+msgstr "Elegir archivo csv"
 
 #: templates/contacts/contact_list.haml:35
 #: templates/public/public_welcome.haml:155
@@ -9634,7 +9635,7 @@ msgid ""
 "          called <i>Field Staff</i>, <i>Office Managers</i>, or <i>Trainees</"
 "i>. You can import these groups into\n"
 "          %(name)s by uploading an Excel file using our\n"
-"          <a href='%(STATIC_URL)s/examples/contacts.xls'>\n"
+"          <a href='%(STATIC_URL)s/examples/contacts.csv'>\n"
 "            template\n"
 "          </a>\n"
 "          as a guide. We'll create a group for you automatically for each "

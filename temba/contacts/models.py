@@ -883,33 +883,13 @@ class Contact(TembaModel):
                 import_params = json.loads(task.import_params)
             except Exception:
                 pass
-
-        # this file isn't good enough, lets write it to local disk
-        from django.conf import settings
-        from uuid import uuid4
-
-        # make sure our tmp directory is present (throws if already present)
-        try:
-            os.makedirs(os.path.join(settings.MEDIA_ROOT, 'tmp'))
-        except Exception:
-            pass
-
-        # rewrite our file to local disk
-        tmp_file = os.path.join(settings.MEDIA_ROOT, 'tmp/%s' % str(uuid4()))
-        filename.open()
-
-        out_file = open(tmp_file, 'w')
-        out_file.write(filename.read())
-        out_file.close()
-
         import_results = dict()
 
         try:
-            contacts = cls.import_xls(open(tmp_file), user, import_params, log, import_results)
+	    """ We only accept csv files""""
+            contacts = cls.import_csv_file(filename.name, user, import_params, log, import_results)
         except XLRDError:
-            contacts = cls.import_raw_csv(open(tmp_file), user, import_params, log, import_results)
-        finally:
-            os.remove(tmp_file)
+            contacts = cls.import_raw_csv(filename.name, user, import_params, log, import_results)
 
         # don't create a group if there are no contacts
         if not contacts:
@@ -1318,6 +1298,91 @@ class Contact(TembaModel):
     def __unicode__(self):
         return self.get_display()
 
+    ############################################################################
+    #########################       Mx Abierto          ########################
+    ############################################################################
+    @classmethod
+    def get_org_by_id(cls, id_org):
+        """Wrapper to obtain an org, without import in files (smartmin)"""
+        return Org.objects.get(id = id_org)
+
+    @classmethod
+    def create_instance_by_admin(cls, field_dict,is_admin,org,country):
+        """
+        Creates or updates a contact from the given field values during an import
+        trying to optimize time creating a contact
+        """
+        if 'created_by' not in field_dict:
+            raise ValueError("Import fields dictionary must include org and created_by")
+        user = field_dict.pop('created_by')
+        uuid = field_dict.pop('uuid', None)
+        urns = []
+        possible_urn_headers = [scheme[0] for scheme in IMPORT_HEADERS]
+        # prevent urns update on anon org
+        if uuid and org.is_anon and not is_admin:
+            possible_urn_headers = []
+
+        for urn_header in possible_urn_headers:
+            value = None
+            if urn_header in field_dict:
+                value = field_dict[urn_header]
+                del field_dict[urn_header]
+
+            if not value:
+                continue
+
+            urn_scheme = IMPORT_HEADER_TO_SCHEME[urn_header]
+
+            if urn_scheme == TEL_SCHEME:
+                value = regex.sub(r'[ \-()]+', '', value, regex.V0)
+                # at this point the number might be a decimal, something that looks like '18094911278.0' due to
+                # excel formatting that field as numeric.. try to parse it into an int instead
+                try:
+                    value = str(int(float(value)))
+                except Exception:  # pragma: no cover
+                    # oh well, neither of those, stick to the plan, maybe we can make sense of it below
+                    pass
+                # only allow valid numbers
+                (normalized, is_valid) = ContactURN.normalize_number(value, country)
+                if not is_valid:
+                    raise SmartImportRowError("Invalid Phone number %s" % value)
+                # in the past, test contacts have ended up in exports. Don't re-import them
+                if value == OLD_TEST_CONTACT_TEL:
+                    raise SmartImportRowError("Ignored test contact")
+            search_contact = Contact.from_urn(org, urn_scheme, value, country)
+            # if this is an anonymous org, don't allow updating
+            if org.is_anon and search_contact and not is_admin:
+                raise SmartImportRowError("Other existing contact on anonymous organization")
+            urns.append((urn_scheme, value))
+        if not urns and not (org.is_anon or uuid):
+            error_str = "Missing any valid URNs"
+            error_str += "; at least one among %s should be provided" % ", ".join(possible_urn_headers)
+            raise SmartImportRowError(error_str)
+        # title case our name
+        name = field_dict.get(Contact.NAME, None)
+        if name:
+            name = " ".join([_.capitalize() for _ in name.split()])
+        language = field_dict.get(Contact.LANGUAGE)
+        if language is not None and len(language) != 3:
+            language = None  # ignore anything that's not a 3-letter code
+        # create new contact or fetch existing one
+        contact = Contact.get_or_create(org, user, name, uuid=uuid, urns=urns, language=language, force_urn_update=True)
+        # if they exist and are blocked, unblock them
+        if contact.is_blocked:
+            contact.unblock(user)
+        for key in field_dict.keys():
+            # ignore any reserved fields
+            if key in Contact.RESERVED_FIELDS:
+                continue
+            value = field_dict[key]
+            # date values need converted to localized strings
+            if isinstance(value, datetime.date):
+                value = org.format_date(value, True)
+            contact.set_field(user, key, value)
+        return contact
+############################################################################
+#########################       Mx Abierto(END)     ########################
+############################################################################
 
 LOWEST_PRIORITY = 1
 STANDARD_PRIORITY = 50
