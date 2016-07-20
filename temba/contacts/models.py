@@ -253,7 +253,7 @@ class Contact(TembaModel):
         """
         Define Contact.user_channels to refer to user channels relation
         """
-        return Channel.objects.filter(org =self.org)
+        return return self.channels.all()
     ############################################################################
     ###############################     Mx Abierto (END)  ######################
     ############################################################################

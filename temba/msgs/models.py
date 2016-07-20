@@ -334,7 +334,7 @@ class Broadcast(models.Model):
 
         return commands
 
-    def send(self, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
+    def send(self, channel = None, trigger_send=True, message_context=None, response_to=None, status=PENDING, msg_type=INBOX,
              created_on=None, base_language=None, partial_recipients=None):
         """
         Sends this broadcast by creating outgoing messages for each recipient.
@@ -403,14 +403,14 @@ class Broadcast(models.Model):
 
             # find the right text to send
             text = Language.get_localized_text(text_translations, preferred_languages, self.text)
-
+            channel_to_use = channel if channel else self.channel
             try:
                 msg = Msg.create_outgoing(org,
                                           self.created_by,
                                           recipient,
                                           text,
                                           broadcast=self,
-                                          channel=self.channel,
+                                          channel=channel_to_use,
                                           response_to=response_to,
                                           message_context=message_context,
                                           status=status,
@@ -453,6 +453,7 @@ class Broadcast(models.Model):
         if not partial_recipients:
             self.status = QUEUED if len(recipients) > 0 else SENT
             self.save(update_fields=('status',))
+
 
     def update(self):
         """
