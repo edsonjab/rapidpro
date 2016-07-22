@@ -31,6 +31,7 @@
 
     {% block fields %}
     <fieldset>
+
     {% for field in fields %}
     {% render_field field %}
     {% endfor %}
@@ -39,7 +40,8 @@
     {% endblock %}
     </fieldset>
     {% endblock fields %}
-
+    {%block list_form%}
+    {%endblock list_form%}
     {% block post-fields %}
     {% endblock post-fields %}
 

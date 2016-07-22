@@ -1,6 +1,15 @@
 -extends 'smartmin/form.html'
+
 -load i18n
 -load humanize
+-block list_form
+    %h4 Informacion de los flujos
+
+    -for flow in list_flow
+       %label
+           Flujo:
+       {{flow.name}}
+       {{flow.channels_used}}
 
 -block summary
 
@@ -62,7 +71,7 @@
     %p.instructions
       -trans "Choose when you would like the flow to start."
 
-    #trigger_flow  
+    #trigger_flow
       - render_field 'flow'
     #trigger_omnibox
       - render_field 'omnibox'
@@ -169,4 +178,3 @@
       setNextFireText({{ object.schedule.next_fire|date:"U" }})
       {% endif %}
     });
-

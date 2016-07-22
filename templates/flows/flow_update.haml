@@ -14,7 +14,7 @@
   {{block.super}}
 
   :javascript
-    
+
     $(document).ready(function() {
 
       select2div('#id_expires_after_minutes', '520px');
@@ -33,6 +33,13 @@
         tokenSeparators: [",", " "],
         minimumResultsForSearch: -1,
         placeholder: "Add a keyword to begin this flow (optional)",
+        containerCssClass: "select2-temba-field"
+      });
+    $('#id_channels_used').select2({
+        tags: [],
+        tokenSeparators: [",", " "],
+        minimumResultsForSearch: -1,
+        placeholder: "Add a channel (optional)",
         containerCssClass: "select2-temba-field"
       });
 
