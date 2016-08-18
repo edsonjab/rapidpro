@@ -1065,7 +1065,7 @@ SEND_MESSAGES = os.getenv('SEND_MESSAGES')
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause external APIs to be called in test environment
-SEND_WEBHOOKS = False
+SEND_WEBHOOKS = os.getenv('SEND_WEBHOOKS')
 
 ######
 # DANGER: only turn this on if you know what you are doing!

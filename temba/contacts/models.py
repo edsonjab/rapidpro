@@ -239,8 +239,10 @@ class Contact(TembaModel):
         After, if we need to send something, we try with this channel, if is not
         the type of the channel required, we select randomly another channel with
         the type required"""
-        channel = Channel.objects.filter(org = self.org).order_by('?').first()
-        self.channels.add(channel)
+        channels = Channel.objects.filter(org = self.org).order_by('?')
+        if channels:
+            channel = channels.first()
+            self.channels.add(channel)
 
 
     def save(self, *args, **kwargs):
@@ -253,7 +255,7 @@ class Contact(TembaModel):
         """
         Define Contact.user_channels to refer to user channels relation
         """
-        return return self.channels.all()
+        return self.channels.all()
     ############################################################################
     ###############################     Mx Abierto (END)  ######################
     ############################################################################
@@ -274,7 +276,12 @@ class Contact(TembaModel):
         Define Contact.user_groups to only refer to user groups
         """
         return self.all_groups.filter(group_type=ContactGroup.TYPE_USER_DEFINED)
-    
+    @property
+    def user_channels(self):
+        """
+        Define Contact.user_groups to only refer to user groups
+        """
+        return self.channels.all()
     def as_json(self):
         obj = dict(id=self.pk, name=unicode(self))
 
@@ -633,13 +640,20 @@ class Contact(TembaModel):
                     for channel in contact.channels.all():
                         contact.channels.remove(channel)
                     for channel in channels :
-                    contact.channels.add(channel)
+                        contact.channels.add(channel)
 
             # otherwise create new contact with all URNs
             else:
                 kwargs = dict(org=org, name=name, language=language, is_test=is_test,
                               created_by=user, modified_by=user)
                 contact = Contact.objects.create(**kwargs)
+                if channels:
+                    """ We created a contact with random channels, but
+                        if we receive a list of  channels, update his list """
+                    for channel in contact.channels.all():
+                        contact.channels.remove(channel)
+                    for channel in channels:
+                        contact.channels.add(channel)
                 updated_attrs = kwargs.keys()
 
                 # add attribute which allows import process to track new vs existing
@@ -923,7 +937,7 @@ class Contact(TembaModel):
         import_results = dict()
 
         try:
-	    """ We only accept csv files""""
+	    """ We only accept csv files"""
             contacts = cls.import_csv_file(filename.name, user, import_params, log, import_results)
         except XLRDError:
             contacts = cls.import_raw_csv(filename.name, user, import_params, log, import_results)

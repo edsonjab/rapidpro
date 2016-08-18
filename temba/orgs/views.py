@@ -421,6 +421,11 @@ class UserSettingsCRUDL(SmartCRUDL):
         submit_button_name = _("Start Call")
         success_url = '@orgs.usersettings_phone'
 
+class CreateOrgForm(forms.ModelForm):
+    class Meta:
+        model = Org
+        fields = ('name', 'plan','administrators', 'language' )
+
 
 class OrgCRUDL(SmartCRUDL):
     actions = ('signup', 'home', 'webhook', 'edit', 'join', 'grant', 'create_login', 'choose',
@@ -825,7 +830,20 @@ class OrgCRUDL(SmartCRUDL):
         def get_context_data(self, **kwargs):
             context = super(OrgCRUDL.Manage, self).get_context_data(**kwargs)
             context['searches'] = ['Nyaruka', ]
+            context['create_org_form'] = CreateOrgForm()
             return context
+
+        def post (self, request, *args, **kwargs):
+            form = CreateOrgForm(self.request.POST or None)
+            if form and form.is_valid():
+                pform = form.save(commit = False)
+                pform.created_by = request.user
+                pform.modified_by = request.user
+                pform.save()
+            else:
+                print form.errors
+            return HttpResponseRedirect('/org/manage/')
+
 
         def lookup_field_link(self, context, field, obj):
             if field == 'owner':
