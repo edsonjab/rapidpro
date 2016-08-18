@@ -1014,7 +1014,7 @@ class Msg(models.Model):
             'time': datetime_to_str(self.created_on, format=date_format, tz=tz)
         }
 
-    def resend(self):
+    def resend(self,to_channel = None):
         """
         Resends this message by creating a clone and triggering a send of that clone
         """
@@ -1023,7 +1023,9 @@ class Msg(models.Model):
 
         # see if we should use a new channel
         channel = self.org.get_send_channel(contact_urn=self.contact_urn)
-
+        # See if a new channel is specify
+        if to_channel:
+            channel = to_channel
         cloned = Msg.all_messages.create(org=self.org,
                                          channel=channel,
                                          contact=self.contact,
@@ -1035,7 +1037,9 @@ class Msg(models.Model):
                                          direction=self.direction,
                                          topup_id=topup_id,
                                          status=PENDING,
+                                         msg_type = self.msg_type,
                                          broadcast=self.broadcast)
+        cloned.steps.add(*self.steps.all())
 
         # mark ourselves as resent
         self.status = RESENT
