@@ -271,7 +271,7 @@ LOGGING = {
 # Branding Configuration
 # -----------------------------------------------------------------------------------
 BRANDING = {
-    'rapidpro.io': {
+    'rapidpro.datos.gob.mx': {
         'slug': 'rapidpro',
         'name': 'RapidPro',
         'org': 'UNICEF',
@@ -292,7 +292,7 @@ BRANDING = {
         'credits': _("Copyright &copy; 2012-2015 UNICEF, Nyaruka. All Rights Reserved.")
     }
 }
-DEFAULT_BRAND = 'rapidpro.io'
+DEFAULT_BRAND = 'rapidpro.datos.gob.mx'
 
 # -----------------------------------------------------------------------------------
 # Directory Configuration
@@ -305,7 +305,8 @@ TESTFILES_DIR = os.path.join(PROJECT_DIR, '../testfiles')
 TEMPLATE_DIRS = (os.path.join(PROJECT_DIR, '../templates'),)
 STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'), )
 STATIC_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
-STATIC_URL = '/static/'
+STATIC_URL = '/sitestatic/'
+COMPRESS_OFFLINE_MANIFEST ="manifest.json"
 COMPRESS_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 MEDIA_ROOT = os.path.join(PROJECT_DIR, '../media')
 MEDIA_URL = "/media/"
@@ -1042,13 +1043,16 @@ HUB9_ENDPOINT = 'http://175.103.48.29:28078/testing/smsmt.php'
 # -----------------------------------------------------------------------------------
 
 COMPRESS_PRECOMPILERS = (
-    ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '../static', 'less')),
+    ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '/static', 'less')),
     ('text/coffeescript', 'coffee --compile --stdio'))
 COMPRESS_OFFLINE_CONTEXT = dict(STATIC_URL=STATIC_URL, base_template='frame.html')
-
-COMPRESS_ENABLED = False
-COMPRESS_OFFLINE = False
-COMPRESS_URL = '/sitestatic/'
+COMPRESS_CSS_FILTERS = [
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.CSSMinFilter'
+]
+COMPRESS_ENABLED = True
+COMPRESS_OFFLINE = True
+COMPRESS_URL =  STATIC_URL
 
 MAGE_API_URL = 'http://localhost:8026/api/v1'
 MAGE_AUTH_TOKEN = '___MAGE_TOKEN_YOU_PICK__'

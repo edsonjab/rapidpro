@@ -37,8 +37,8 @@
 
 
 -block extra-less
-  -compress css
     {% lessblock %}
+    {% compress css %}
       :plain
 
         .select-section {
@@ -111,6 +111,7 @@
           }
 
         }
+      {%endcompress%}
     {% endlessblock %}
 
 -block page-top

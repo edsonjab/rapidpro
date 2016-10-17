@@ -162,11 +162,10 @@
       %a#delete-form.posterize{href:'{% url "contacts.contact_delete" contact.pk %}'}
 
 -block extra-less
-  -compress css
-
-    %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}less/videojs.less', media:'all'}
 
     {% lessblock %}
+    {%compress css%}
+      <link media='all' href='/sitestatic/less/videojs.less' type='text/less' rel='stylesheet' />
       :plain
 
         .header {
@@ -481,6 +480,7 @@
 
           }
         }
+        {% endcompress %}
 
     {% endlessblock %}
 

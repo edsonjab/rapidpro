@@ -18,7 +18,7 @@
             Edit
           .report-description{style:'font-size: 16px; margin-left:25px;'}
            "{{report.description}}"
-          
+
       %ul.charts{ ng-model:"fields", ui-sortable:"true" }
 
         %li.chart-container{ ng-repeat:"field in fields | filter:{ isVisible: true, isLoaded: true }", class:'selection-[[field.chartType]] chart-container-size-[[field.chartSize]]'}
@@ -26,14 +26,14 @@
             .chart-title-responses [[field.total]]
               -trans "responses"
             [[field.label]]
-          
+
           %chart{config:'field.chart'}
             %datatable{config:'field.table'}
 
 -block extra-less
 
-  -compress css
     {% lessblock %}
+      {%compress css%}
       :plain
         .results {
           margin-left:320px;
@@ -475,7 +475,7 @@
         .icon:hover {
           cursor:pointer;
         }
-
+      {%endcompress%}
     {% endlessblock %}
 
 -block extra-script
