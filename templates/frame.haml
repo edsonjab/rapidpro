@@ -100,35 +100,29 @@
     -load i18n
 
     -block styles
-      -compress css
+      {%compress css%}
         %link{type:'text/css', rel:'stylesheet', href:'{{ STATIC_URL }}css/bootstrap.css',  media:'all' }
         %link{type:'text/css', rel:'stylesheet', href:'{{ STATIC_URL }}css/animate.css',  media:'all' }
-
-      -compress css
+      {%endcompress%}
+      {%compress css%}
         %link{type:'text/css', rel:'stylesheet', href:'{{ STATIC_URL }}css/bootstrap-responsive.css',
               media:'all and (min-width: 1200px), all and (max-width: 767px), all and (max-width: 480px), all and (min-width: 980px)' }
-
-      -compress css
+      {%endcompress%}
+      {%compress css%}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}css/select2.css", media:'all'}
         %link{type:'text/css', rel:'stylesheet', href:'{{ STATIC_URL }}css/jquery.atwho.css', media:'all'}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}css/redmond/jquery-ui-1.10.2.custom.min.css", media:'all'}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}css/featherlight.min.css", media:'all'}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}css/video-js.css", media:'all'}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}css/videojs-vjsdownload.css", media:'all'}
-
-      -compress css
+      {%endcompress%}
+      {%compress css%}
         %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}fonts/temba/style.css", media:'all'}
         %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}less/style.less', media:'all'}
         %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}less/formax.less', media:'all'}
         %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}less/print.less', media:'print'}
-        // custom branding
-        -for style in brand.styles
-          -if 'less' in style
-            %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}{{style}}', media:'all'}
-          -else
-            %link{type:'text/css', rel:'stylesheet', href:"{{ STATIC_URL }}{{style}}", media:'all'}
-
-
+        
+       {%endcompress%}
       -block extra-less
       -block extra-style
 
