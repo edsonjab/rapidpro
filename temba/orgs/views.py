@@ -1501,18 +1501,27 @@ class OrgCRUDL(SmartCRUDL):
 
             return links
 
-        def add_channel_section(self, formax, channel):
-
+        def add_channel_from_database(self,formax, channel):
             if self.has_org_perm('channels.channel_read'):
                 from temba.channels.views import get_channel_icon
-                icon = get_channel_icon(channel.channel_type)
-                formax.add_section('channel', reverse('channels.channel_read', args=[channel.uuid]), icon=icon, action='link')
+                from django.utils.timesince import timesince
+                type_of_channel = dict((x, y) for x, y in Channel.TYPE_CHOICES )
+                sync_events = SyncEvent.objects.filter(channel=channel.id).order_by('-created_on')
+                last_sync = sync_events.first()
+                channel_dictionary['url'] = channel_url %(str(channel.uuid))
+                channel_dictionary['icon'] = get_channel_icon(channel.channel_type)
+                last_sync_string =  channel_never if not last_sync else timesince(last_sync.created_on)
+                #Reder depend on channel type :
+                sync_string = channel_last_sync_es if channel.channel_type == 'A' else channel_active_es
+                last_sync_string = last_sync_string if  channel.channel_type == 'A' else to_human_date_es(channel.created_on)
+                channel_dictionary['response'] = channel_response_es% (channel.id,type_of_channel[channel.channel_type],str(channel.address)) + sync_string%(last_sync_string)
+                formax.sections.append(channel_dictionary.copy())
 
         def derive_formax_sections(self, formax, context):
             # add the channel option if we have one
             user = self.request.user
             org = user.get_org()
-            
+
             if self.has_org_perm('orgs.topup_list'):
                 #  Mx abierto, chage add section with crude html and direct query to db
                 topups = TopUp.objects.filter(org = org,is_active=True).order_by('-expires_on')
@@ -1530,57 +1539,26 @@ class OrgCRUDL(SmartCRUDL):
 
 
             if self.has_org_perm("channels.channel_update"):
-                from temba.channels.views import get_channel_icon
-                from django.utils.timesince import timesince
-                type_of_channel = dict((x, y) for x, y in Channel.TYPE_CHOICES )
+
                 # get any channel thats not a delegate
                 channels = Channel.objects.filter(org=org, is_active=True, parent=None).order_by('-role')
                 for channel in channels:
-                    sync_events = SyncEvent.objects.filter(channel=channel.id).order_by('-created_on')
-                    last_sync = sync_events.first()
-
-                    channel_dictionary['url'] = channel_url %(str(channel.uuid))
-                    channel_dictionary['icon'] = get_channel_icon(channel.channel_type)
-                    last_sync_string =  channel_never if not last_sync else timesince(last_sync.created_on)
-                    #Reder depend on channel type :
-                    sync_string = channel_last_sync_es if channel.channel_type == 'A' else channel_active_es
-                    last_sync_string = last_sync_string if  channel.channel_type == 'A' else to_human_date_es(channel.created_on)
-                    channel_dictionary['response'] = channel_response_es% (channel.id,type_of_channel[channel.channel_type],str(channel.address)) + sync_string%(last_sync_string)
-                    formax.sections.append(channel_dictionary.copy())
-                    #self.add_channel_section(formax, channel)
+                    self.add_channel_from_database(formax,channel)
 
                 client = org.get_twilio_client()
                 if client:
                     formax.add_section('twilio', reverse('orgs.org_twilio_account'), icon='icon-channel-twilio')
-            """
-            from django.template.context import  RequestContext
-            from django.shortcuts import render
-            from temba.channels.views import get_channel_icon
-            from django.utils.timesince import timesince
-            channel = Channel.objects.filter(org=org, is_active=True, parent=None).order_by('-role').first()
-            sync_events = SyncEvent.objects.filter(channel=channel.id).order_by('-created_on')
-            last_sync = sync_events.first()
-            channel_dictionary['url'] = channel_url %(str(channel.uuid))
-            channel_dictionary['icon'] = get_channel_icon(channel.channel_type)
-
-            #response =render(self.request, 'channels/channel_read.haml',{'base_template': '', 'object':channel, 'last_sync': last_sync }, context_instance = RequestContext(self.request) )
-            response = OrgCRUDL.Edit.as_view()(self.request)
-            #response =render(self.request, 'orgs/org_edit.haml',{'base_template': 'frame.haml','form': OrgCRUDL.Edit()}, context_instance = RequestContext(self.request) )
-
-            channel_dictionary['response'] = response
-            formax.sections.append(channel_dictionary)
-            """
-            if self.has_org_perm('orgs.org_profile'):
-                formax.add_section('user', reverse('orgs.user_edit'), icon='icon-user', action='redirect')
+            #if self.has_org_perm('orgs.org_profile'):
+            #    formax.add_section('user', reverse('orgs.user_edit'), icon='icon-user', action='redirect')
 
             if self.has_org_perm('orgs.org_edit'):
                 formax.add_section('org', reverse('orgs.org_edit'), icon='icon-office')
 
-            if self.has_org_perm('orgs.org_languages'):
-                formax.add_section('languages', reverse('orgs.org_languages'), icon='icon-language')
+            #if self.has_org_perm('orgs.org_languages'):
+            #    formax.add_section('languages', reverse('orgs.org_languages'), icon='icon-language')
 
-            if self.has_org_perm('orgs.org_country'):
-                formax.add_section('country', reverse('orgs.org_country'), icon='icon-location2')
+            #if self.has_org_perm('orgs.org_country'):
+            #    formax.add_section('country', reverse('orgs.org_country'), icon='icon-location2')
 
             if self.has_org_perm('orgs.org_webhook'):
                 formax.add_section('webhook', reverse('orgs.org_webhook'), icon='icon-cloud-upload')
