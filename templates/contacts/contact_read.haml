@@ -1,4 +1,4 @@
--extends "smartmin/read.html" 
+-extends "smartmin/read.html"
 
 -load smartmin sms contacts compress temba channels
 -load i18n humanize
@@ -65,7 +65,13 @@
           -else
             %a.btn.btn-primary.btn-mini{href:"{% url 'contacts.contact_filter' group.id %}"}
               = group.name
-
+    %h5
+    %span.labelchannel="Channels:"
+    %div.header-margin
+      -for group in contact_channels
+        %span.group-membership{id:"group_{{group.id}}_{{contact.id}}"}
+            %a.btn.btn-primary.btn-mini{href:'#'}
+              = group
 -block read-buttons
 
 -block content
@@ -156,11 +162,10 @@
       %a#delete-form.posterize{href:'{% url "contacts.contact_delete" contact.pk %}'}
 
 -block extra-less
-  -compress css
-
-    %link{type:'text/less', rel:'stylesheet', href:'{{STATIC_URL}}less/videojs.less', media:'all'}
 
     {% lessblock %}
+    {%compress css%}
+      <link media='all' href='/sitestatic/less/videojs.less' type='text/less' rel='stylesheet' />
       :plain
 
         .header {
@@ -475,6 +480,7 @@
 
           }
         }
+        {% endcompress %}
 
     {% endlessblock %}
 

@@ -20,6 +20,8 @@
         #omni
           #omni-select2
             #omnibox.placeholder.populate{style:"width:100%"}
+          #omni-select3
+            #channelbox.placeholder.populate{style:"width:100%"}
           #loading
         #errors
     -else
@@ -75,9 +77,13 @@
         initializeOmnibox(data.results);
         $('.select2-input').attr('tabindex', 2);
       });
+       $.get("{% url 'listChannelsAjax' %}?" + queryString, function(data, textStatus){
+         initializeChannel(data.results);
+         $('.select3-input').attr('tabindex', 3);
+       });
     }
 
-    
+
     function showCompose(loading, url, onComplete) {
       // make sure any previous errors are removed
       $("#send-message .error").remove();
@@ -88,11 +94,15 @@
       // show us as loading or initialize and empty select2
       if (loading) {
         $("#omnibox").val("");
+        $("#channelbox").val("");
         $("#omni-select2").hide();
+        $("#omni-select3").hide();
+
         $("#loading").show();
         $("#send-message .ok").text('{% trans "Loading recipients.." %}').addClass("disabled");
       } else {
         $("#omni-select2").show();
+        $("#omni-select3").show();
         $("#loading").hide();
       }
 
@@ -100,6 +110,7 @@
       var modal = $("#send-message").modal({keyboard:false}).show();
 
       initializeOmnibox(null);
+      initializeChannel(null);
 
       // focus the text field on show
       $("#send-message #id_text").focus();
@@ -174,7 +185,11 @@
       if (omnibox.length > 0) {
         data['omnibox'] = omnibox;
       }
-
+      // add the omnibox value, but only if there actually is something
+      var channel = form.find("#channelbox").val().trim();
+      if (channel.length > 0) {
+        data['channel'] = channel;
+      }
       $.post(post, data, function(data, textStatus, b, c) {
 
         // we are victorious, hide our modal

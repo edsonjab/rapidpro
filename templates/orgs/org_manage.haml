@@ -5,8 +5,8 @@
 
 -block extra-less
   {{block.super}}
-  -compress css
     {% lessblock %}
+    {% compress css%}
       :plain
         .service {
           margin-top:5px;
@@ -77,8 +77,64 @@
           padding:10px;
           .rounded-corners(5px);
         }
-
+      {% endcompress %}
     {% endlessblock %}
+-block create_object
+      .row
+       .span3
+         <a href="#create_org" data-toggle="modal">
+            Crea una organizacion
+         </a>
+
+         <!-- Modal -->
+         <div id="create_org" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+           <div class="modal-dialog">
+           <div class="modal-content">
+           <div class="modal-header">
+             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+             %span.title{:style =>"color: rgb(255, 255, 255)! important;"}
+                -trans "Crea una organización"
+           </div>
+           <div class="modal-body" style="margin-right: 0px;">
+             <form role="form" action="" method="post">
+               {% csrf_token %}
+               <p>
+               {{ create_org_form.name.label}}
+               </p>
+               %h5 Campo Obligatorio:
+
+               <p>
+               {{ create_org_form.name}}
+               </p>
+               <p>
+               {{create_org_form.plan.label}}
+               </p>
+               <p>
+               {{create_org_form.plan}}
+               </p>
+               <p>
+               {{create_org_form.administrators.label}}
+               </p>
+                %h5 Campo Obligatorio:
+               <p>
+               {{create_org_form.administrators}}
+               </p>
+               <p>
+               {{create_org_form.language.label}}
+               </p>
+               <p>
+               {{create_org_form.language}}
+               </p>
+
+             <div>
+               <button type="submit" class="btn btn-primary btn-block send-button"style="width: 100px;" >Guardar</button>
+             </div>
+             </form>
+           </div><!-- End of Modal body -->
+         </div><!-- End of Modal content -->
+       </div><!-- End of Modal dialog -->
+     </div>
+
 
 -block extra-script
   {{block.super}}

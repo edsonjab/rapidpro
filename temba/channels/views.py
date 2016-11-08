@@ -26,7 +26,7 @@ from django_countries.data import COUNTRIES
 from phonenumbers.phonenumberutil import region_code_for_number
 from smartmin.views import SmartCRUDL, SmartReadView
 from smartmin.views import SmartUpdateView, SmartDeleteView, SmartTemplateView, SmartListView, SmartFormView
-from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, FACEBOOK_SCHEME, ContactURN
+from temba.contacts.models import TEL_SCHEME, TWITTER_SCHEME, TELEGRAM_SCHEME, URN_SCHEME_CHOICES, FACEBOOK_SCHEME, ContactURN,Contact
 from temba.msgs.models import Broadcast, Call, Msg, QUEUED, PENDING
 from temba.orgs.models import Org, ACCOUNT_SID
 from temba.orgs.views import OrgPermsMixin, OrgObjPermsMixin, ModalMixin
@@ -2359,3 +2359,39 @@ class ChannelLogCRUDL(SmartCRUDL):
         def derive_queryset(self, **kwargs):
             queryset = super(ChannelLogCRUDL.Read, self).derive_queryset(**kwargs)
             return queryset.filter(msg__channel__org=self.request.user.get_org).order_by('-created_on')
+
+#######################################################################
+##################### Ajax functions ##################################
+#######################################################################
+from django.core import serializers
+import json
+from django.views.generic import TemplateView
+""" Class to list all channel by org, or by contact
+"""
+class ListChannelAjax(TemplateView):
+    def get(self, request, *args, **kwargs):
+        org = request.user.get_org()
+
+        if 'c'in request.GET:
+            """Search by contact """
+            contact_id = int( request.GET['c'])
+            channels = Contact.objects.get(id = contact_id).channels.all()
+            if not channels:
+                """If contact doesnt have channels, take first of the org """
+                channels = Channel.objects.filter(org = org).first()
+        else :
+            channels = Channel.objects.filter(org = org)
+
+        list_data = []
+        results = []
+        for channel in channels:
+            text = "id:  %s, "%(channel.id)
+            text += "" if not channel.address else "direccion: %s, " %(channel.address)
+            text += "" if not channel.channel_type else "tipo: %s, "%(channel.channel_type)
+            text += "" if not channel.scheme else "esquema: %s" %(channel.scheme)
+            results.append({'id': "%s" % (channel.id),
+                              'text': "%s"%( text),
+                              })
+        list_data = {"total": channels.count(), "results": results, "err": "nil", "more": False}
+        list_json = json.dumps(list_data)  #dump list as JSON
+        return HttpResponse(list_json, content_type='application/json')

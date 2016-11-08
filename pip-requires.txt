@@ -1,4 +1,4 @@
--e git+https://github.com/nyaruka/smartmin.git#egg=smartmin
+-e git+https://github.com/mxabierto/smartmin.git#egg=smartmin
 Django==1.8.5
 coverage==4.0.3
 django-celery==3.1.16
@@ -62,4 +62,3 @@ rapidpro-expressions
 python-telegram-bot
 -e git+http://github.com/nyaruka/python-librato-bg.git#egg=librato_bg
 django-mptt==0.7.4
-

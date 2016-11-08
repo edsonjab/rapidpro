@@ -56,7 +56,7 @@ class LessBlockNode(template.Node):
 
     def render(self, context):
         output = self.nodelist.render(context)
-        style_output = '<style type="text/less" media="all">@import "variables.less";%s</style>' % output
+        style_output = '<style type="text/less" media="all">%s</style>' % output
         return style_output
 
 # register our tag

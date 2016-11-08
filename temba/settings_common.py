@@ -12,7 +12,7 @@ from django.utils.translation import ugettext_lazy as _
 # -----------------------------------------------------------------------------------
 # Default to debugging
 # -----------------------------------------------------------------------------------
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 TEMPLATE_DEBUG = DEBUG
 
 # -----------------------------------------------------------------------------------
@@ -46,9 +46,9 @@ POSTGRES_PORT = int(os.getenv('POSTGRES_PORT_5432_TCP_PORT'))
 # if your site was at http://temba.io, it might look like this:
 # -----------------------------------------------------------------------------------
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'server@temba.io'
-DEFAULT_FROM_EMAIL = 'server@temba.io'
-EMAIL_HOST_PASSWORD = 'mypassword'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 
 # where recordings and exports are stored
@@ -82,8 +82,8 @@ LANGUAGES = (
     ('fr', _("French")),
     ('es', _("Spanish")))
 
-DEFAULT_LANGUAGE = "en-us"
-DEFAULT_SMS_LANGUAGE = "en-us"
+DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE')
+DEFAULT_SMS_LANGUAGE = os.getenv('DEFAULT_LANGUAGE')
 
 SITE_ID = 1
 
@@ -271,7 +271,7 @@ LOGGING = {
 # Branding Configuration
 # -----------------------------------------------------------------------------------
 BRANDING = {
-    'rapidpro.io': {
+    'rapidpro.datos.gob.mx': {
         'slug': 'rapidpro',
         'name': 'RapidPro',
         'org': 'UNICEF',
@@ -279,10 +279,10 @@ BRANDING = {
         'welcome_topup': 1000,
         'email': 'join@rapidpro.io',
         'support_email': 'support@rapidpro.io',
-        'link': 'https://app.rapidpro.io',
-        'api_link': 'https://api.rapidpro.io',
+        'link': 'https://rapidpro.datos.gob.mx',
+        'api_link': 'https://rapidpro.datos.gob.mx',
         'docs_link': 'http://knowledge.rapidpro.io',
-        'domain': 'app.rapidpro.io',
+        'domain': 'rapidpro.datos.gob.mx',
         'favico': 'brands/rapidpro/rapidpro.ico',
         'splash': '/brands/rapidpro/splash.jpg',
         'logo': '/brands/rapidpro/logo.png',
@@ -292,7 +292,7 @@ BRANDING = {
         'credits': _("Copyright &copy; 2012-2015 UNICEF, Nyaruka. All Rights Reserved.")
     }
 }
-DEFAULT_BRAND = 'rapidpro.io'
+DEFAULT_BRAND = 'rapidpro.datos.gob.mx'
 
 # -----------------------------------------------------------------------------------
 # Directory Configuration
@@ -305,7 +305,8 @@ TESTFILES_DIR = os.path.join(PROJECT_DIR, '../testfiles')
 TEMPLATE_DIRS = (os.path.join(PROJECT_DIR, '../templates'),)
 STATICFILES_DIRS = (os.path.join(PROJECT_DIR, '../static'), os.path.join(PROJECT_DIR, '../media'), )
 STATIC_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
-STATIC_URL = '/static/'
+STATIC_URL = '/sitestatic/'
+COMPRESS_OFFLINE_MANIFEST ="manifest.json"
 COMPRESS_ROOT = os.path.join(PROJECT_DIR, '../sitestatic')
 MEDIA_ROOT = os.path.join(PROJECT_DIR, '../media')
 MEDIA_URL = "/media/"
@@ -1016,7 +1017,7 @@ REST_FRAMEWORK = {
         'v2.messages': '2500/hour',
         'v2.runs': '2500/hour'
     },
-    'PAGE_SIZE': 250,
+    'PAGE_SIZE': 100000000,
     'DEFAULT_RENDERER_CLASSES': (
         'temba.api.support.DocumentationRenderer',
         'rest_framework.renderers.JSONRenderer',
@@ -1042,13 +1043,16 @@ HUB9_ENDPOINT = 'http://175.103.48.29:28078/testing/smsmt.php'
 # -----------------------------------------------------------------------------------
 
 COMPRESS_PRECOMPILERS = (
-    ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '../static', 'less')),
+    ('text/less', 'lessc --include-path="%s" {infile} {outfile}' % os.path.join(PROJECT_DIR, '/static', 'less')),
     ('text/coffeescript', 'coffee --compile --stdio'))
 COMPRESS_OFFLINE_CONTEXT = dict(STATIC_URL=STATIC_URL, base_template='frame.html')
-
-COMPRESS_ENABLED = False
-COMPRESS_OFFLINE = False
-COMPRESS_URL = '/sitestatic/'
+COMPRESS_CSS_FILTERS = [
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.CSSMinFilter'
+]
+COMPRESS_ENABLED = True
+COMPRESS_OFFLINE = True
+COMPRESS_URL =  STATIC_URL
 
 MAGE_API_URL = 'http://localhost:8026/api/v1'
 MAGE_AUTH_TOKEN = '___MAGE_TOKEN_YOU_PICK__'
@@ -1060,17 +1064,17 @@ MAGE_AUTH_TOKEN = '___MAGE_TOKEN_YOU_PICK__'
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause messages to be sent to live customer aggregators
-SEND_MESSAGES = False
+SEND_MESSAGES = os.getenv('SEND_MESSAGES')
 
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause external APIs to be called in test environment
-SEND_WEBHOOKS = False
+SEND_WEBHOOKS = os.getenv('SEND_WEBHOOKS')
 
 ######
 # DANGER: only turn this on if you know what you are doing!
 #         could cause emails to be sent in test environment
-SEND_EMAILS = False
+SEND_EMAILS = os.getenv('SEND_MAIL')
 
 MESSAGE_HANDLERS = ['temba.triggers.handlers.TriggerHandler',
                     'temba.flows.handlers.FlowHandler',

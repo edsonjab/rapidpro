@@ -47,11 +47,14 @@ def process_message_task(msg_id, from_mage=False, new_contact=False):
 
 
 @task(track_started=True, name='send_broadcast')
-def send_broadcast_task(broadcast_id):
+def send_broadcast_task(broadcast_id, channel = None):
     # get our broadcast
     from .models import Broadcast
     broadcast = Broadcast.objects.get(pk=broadcast_id)
-    broadcast.send()
+    if not channel:
+        broadcast.send(use_channel_by_contact = True)
+    else:
+        broadcast.send(channel = channel)
 
 
 @task(track_started=True, name='send_spam')

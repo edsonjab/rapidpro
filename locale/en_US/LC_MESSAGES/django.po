@@ -4721,7 +4721,7 @@ msgid "Update Contact Group"
 msgstr ""
 
 #: templates/contacts/contact_import.haml:14
-msgid "You can import your contacts from an XLS file you create in Excel."
+msgid "You can import your contacts from an CSV file you create in Excel."
 msgstr ""
 
 #: templates/contacts/contact_import.haml:18

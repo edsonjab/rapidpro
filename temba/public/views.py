@@ -15,6 +15,23 @@ from smartmin.views import SmartCRUDL, SmartReadView, SmartFormView, SmartCreate
 from temba.public.models import Lead, Video
 from temba.utils import analytics, random_string
 from urllib import urlencode
+from django import forms
+from temba.utils.email import send_simple_email
+
+
+###################################################################
+####################     Mx Abierto     ###########################
+###################################################################
+""" Form to send mail of suggestion, use at index template"""
+class SendSuggestionForm(forms.Form):
+    text = forms.CharField(widget=forms.Textarea,required=True, max_length=640)
+
+SUBJECT_SUGGESTION = 'Sugerencia'
+RECIPIENTS_SUGGESTION = 'rapidpromexico@gmail.com'
+
+###################################################################
+#################### Mx Abierto (End)   ###########################
+###################################################################
 
 
 class IndexView(SmartTemplateView):
@@ -24,10 +41,21 @@ class IndexView(SmartTemplateView):
         context = super(IndexView, self).get_context_data(**kwargs)
         context['thanks'] = 'thanks' in self.request.REQUEST
         context['errors'] = 'errors' in self.request.REQUEST
+        context['send_suggestion_form'] = SendSuggestionForm()
         if context['errors']:
             context['error_msg'] = urlparse.parse_qs(context['url_params'][1:])['errors'][0]
 
         return context
+    def post(self, request, *args, **kwargs):
+        context = self.get_context_data()
+        form = SendSuggestionForm(self.request.POST or None)
+        if form and form.is_valid():
+            recipients = RECIPIENTS_SUGGESTION
+            subject = SUBJECT_SUGGESTION
+            message = request.POST.get('text', '')
+            send_simple_email(recipients, subject, message)
+
+        return super(IndexView, self).render_to_response(context)
 
 
 class WelcomeRedirect(RedirectView):
@@ -97,7 +125,9 @@ class VideoCRUDL(SmartCRUDL):
             context['videos'] = Video.objects.exclude(pk=self.get_object().pk).order_by('order')
             return context
 
-
+"""
+View to create new account in public_index (disable)
+but maybe we might need after
 class LeadCRUDL(SmartCRUDL):
     actions = ('create',)
     model = Lead
@@ -136,7 +166,7 @@ class LeadCRUDL(SmartCRUDL):
                 analytics.track(obj.email, 'temba.org_lead')
 
             return obj
-
+"""
 
 class Blog(RedirectView):
     url = "http://blog." + settings.HOSTNAME
