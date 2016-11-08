@@ -1715,27 +1715,31 @@ class FacebookHandler(View):
         for entry in body.get('entry'):
             # this is an incoming message
             if 'messaging' in entry:
-                msgs = []
+                status = []
 
                 for envelope in entry['messaging']:
-                    if 'message' in envelope:
+                    if 'message' in envelope or 'postback' in envelope:
+                        if 'message' in envelope and envelope['message'].get('is_echo'):
+                            status.append("Echo Ignored")
+                            continue
                         channel_address = envelope['recipient']['id']
                         if channel_address != int(channel.address):
-                            return HttpResponse("Msg does not match channel recipient id: %s" % channel.address, status=400)
+                            return HttpResponse("Msg Ignored for recipient id: %s" % channel.address, status=200)
 
                         content = None
-                        if 'text' in envelope['message']:
-                            content = envelope['message']['text']
-                        elif 'attachments' in envelope['message']:
-                            urls = []
-                            for attachment in envelope['message']['attachments']:
-                                if 'url' in attachment['payload']:
-                                    urls.append(attachment['payload']['url'])
-
-                            content = '\n'.join(urls)
-
-                        # if we have some content, create the msg
-                        if content:
+                        postback = None
+                        if 'message' in envelope:
+                            if 'text' in envelope['message']:
+                                content = envelope['message']['text']
+                            elif 'attachments' in envelope['message']:
+                                urls = []
+                                for attachment in envelope['message']['attachments']:
+                                    if 'url' in attachment['payload']:
+                                        urls.append(attachment['payload']['url'])
+                                content = '/n'.join(urls)
+                        elif 'postback' in envelope:
+                            postback = envelope['postback']['payload']
+                        if content or postback:
                             # does this contact already exist?
                             sender_id = envelope['sender']['id']
                             contact = Contact.from_urn(channel.org, FACEBOOK_SCHEME, sender_id)
@@ -1762,20 +1766,22 @@ class FacebookHandler(View):
 
                                 contact = Contact.get_or_create(channel.org, channel.created_by, incoming_channel=channel,
                                                                 name=name, urns=[(FACEBOOK_SCHEME, sender_id)])
-
+                        if content:
                             msg_date = datetime.fromtimestamp(envelope['timestamp'] / 1000.0).replace(tzinfo=pytz.utc)
                             msg = Msg.create_incoming(channel, (FACEBOOK_SCHEME, sender_id),
                                                       content, date=msg_date, contact=contact)
                             Msg.all_messages.filter(pk=msg.id).update(external_id=envelope['message']['mid'])
-                            msgs.append(msg)
+                        elif postback == Channel.GET_STARTED:
+                            Trigger.catch_triggers(contact, Trigger.TYPE_NEW_CONVERSATION, channel)
+                            status.append("Postback handled.")
 
                     elif 'delivery' in envelope and 'mids' in envelope['delivery']:
                         for external_id in envelope['delivery']['mids']:
                             msg = Msg.all_messages.filter(channel=channel, external_id=external_id).first()
                             if msg:
                                 msg.status_delivered()
-                                msgs.append(msg)
+                                status.append("Msg %d updated." % msg.id)
 
-                return HttpResponse("Msgs Updated: %s" % (",".join([str(m.id) for m in msgs])))
+                return JsonResponse(dict(status=status))
 
-        return HttpResponse("Ignored, unknown msg", status=200)
+        return JsonResponse(dict(status=["Ignored, unknown msg"]))

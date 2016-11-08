@@ -1460,6 +1460,32 @@ class ContactURN(models.Model):
     """
     A Universal Resource Name. This is essentially a table of formatted URNs that can be used to identify contacts.
     """
+    # schemes that we actually support
+    SCHEME_CHOICES = tuple((c[0], c[1]) for c in URN_SCHEME_CONFIG)
+    CONTEXT_KEYS_TO_SCHEME = {c[3]: c[0] for c in URN_SCHEME_CONFIG}
+    CONTEXT_KEYS_TO_LABEL = {c[3]: c[1] for c in URN_SCHEME_CONFIG}
+    IMPORT_HEADER_TO_SCHEME = {s[0]: s[1] for s in IMPORT_HEADERS}
+
+    SCHEMES_SUPPORTING_FOLLOW = {TWITTER_SCHEME}  # schemes that support "follow" triggers
+    SCHEMES_SUPPORTING_NEW_CONVERSATION = {FACEBOOK_SCHEME}  # schemes that support "new conversation" triggers
+
+    EXPORT_FIELDS = {
+        TEL_SCHEME: dict(label="Phone", key=Contact.PHONE, id=0, field=None, urn_scheme=TEL_SCHEME),
+        TWITTER_SCHEME: dict(label="Twitter", key=None, id=0, field=None, urn_scheme=TWITTER_SCHEME),
+        EXTERNAL_SCHEME: dict(label="External", key=None, id=0, field=None, urn_scheme=EXTERNAL_SCHEME),
+        EMAIL_SCHEME: dict(label="Email", key=None, id=0, field=None, urn_scheme=EMAIL_SCHEME),
+        TELEGRAM_SCHEME: dict(label="Telegram", key=None, id=0, field=None, urn_scheme=TELEGRAM_SCHEME),
+        FACEBOOK_SCHEME: dict(label="Facebook", key=None, id=0, field=None, urn_scheme=FACEBOOK_SCHEME),
+    }
+
+    PRIORITY_LOWEST = 1
+    PRIORITY_STANDARD = 50
+    PRIORITY_HIGHEST = 99
+
+    PRIORITY_DEFAULTS = {TEL_SCHEME: PRIORITY_STANDARD, TWITTER_SCHEME: 90}
+
+    ANON_MASK = '*' * 8  # returned instead of URN values for anon orgs
+
     contact = models.ForeignKey(Contact, null=True, blank=True, related_name='urns',
                                 help_text="The contact that this URN is for, can be null")
 
