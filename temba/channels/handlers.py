@@ -1723,7 +1723,7 @@ class FacebookHandler(View):
                             status.append("Echo Ignored")
                             continue
                         channel_address = envelope['recipient']['id']
-                        if channel_address != int(channel.address):
+                        if (int(channel_address) != int(channel.address)):
                             return HttpResponse("Msg Ignored for recipient id: %s" % channel.address, status=200)
 
                         content = None

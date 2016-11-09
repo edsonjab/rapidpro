@@ -520,6 +520,8 @@ class Channel(TembaModel):
 
     @classmethod
     def add_facebook_channel(cls, org, user, page_name, page_id, page_access_token):
+        print '*' *10 + "Add facebook channel" + '*'*10
+        print "org: %s user: %s page_name: %s address: %s "%(org,user,page_name, page_id)
         channel = Channel.create(org, user, None, FACEBOOK, name=page_name, address=page_id,
                                  config={AUTH_TOKEN: page_access_token, PAGE_NAME: page_name},
                                  secret=Channel.generate_secret())
