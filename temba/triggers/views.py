@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import Min
 from smartmin.views import SmartCRUDL, SmartListView, SmartCreateView, SmartTemplateView, SmartUpdateView
-from temba.contacts.models import ContactGroup, URN_SCHEMES_SUPPORTING_FOLLOW
+from temba.contacts.models import ContactGroup, ContactURN
 from temba.contacts.fields import OmniboxField
 from temba.formax import FormaxMixin
 from temba.orgs.views import OrgPermsMixin
@@ -338,7 +338,7 @@ class TriggerCRUDL(SmartCRUDL):
 
             add_section('trigger-missedcall', 'triggers.trigger_missed_call', 'icon-phone')
 
-            if URN_SCHEMES_SUPPORTING_FOLLOW.intersection(org_schemes):
+            if ContactURN.SCHEMES_SUPPORTING_FOLLOW.intersection(org_schemes):
                 add_section('trigger-follow', 'triggers.trigger_follow', 'icon-user-restore')
             if ContactURN.SCHEMES_SUPPORTING_NEW_CONVERSATION.intersection(org_schemes):
                 add_section('trigger-new-conversation', 'triggers.trigger_new_conversation', 'icon-bubbles-2')
