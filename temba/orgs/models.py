@@ -241,7 +241,10 @@ class Org(SmartModel):
         from temba.contacts.models import ContactGroup
 
         counts = ContactGroup.get_system_group_counts(self, (ContactGroup.TYPE_ALL, ContactGroup.TYPE_BLOCKED))
-        return (counts[ContactGroup.TYPE_ALL] + counts[ContactGroup.TYPE_BLOCKED]) > 0
+        total_contacts = 0
+        total_contacts += counts[ContactGroup.TYPE_ALL] if ContactGroup.TYPE_ALL in counts else 0
+        total_contacts += counts[ContactGroup.TYPE_BLOCKED] if ContactGroup.TYPE_BLOCKED in counts else 0
+        return (total_contacts) > 0
 
     def has_messages(self):
         """

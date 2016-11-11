@@ -1920,8 +1920,11 @@ class ContactGroup(TembaModel):
     def get_system_group_queryset(cls, org, group_type):
         if group_type == cls.TYPE_USER_DEFINED:  # pragma: no cover
             raise ValueError("Can only get system group querysets")
-
-        return cls.all_groups.get(org=org, group_type=group_type).contacts.all()
+        group_filter = cls.all_groups.filter(org=org, group_type=group_type)
+        if group_filter:
+            return group_filter.first().contacts.all()
+        else:
+            return []
 
     @classmethod
     def get_system_group_counts(cls, org, group_types=None):

@@ -104,6 +104,8 @@ class ContactListView(OrgPermsMixin, SmartListView):
 
     def get_queryset(self, **kwargs):
         qs = super(ContactListView, self).get_queryset(**kwargs)
+        if not qs:
+            return []
         qs = qs.filter(is_test=False)
         org = self.request.user.get_org()
 
@@ -126,8 +128,14 @@ class ContactListView(OrgPermsMixin, SmartListView):
 
         # if there isn't a search filtering the queryset, we can replace the count function with a quick cache lookup to
         # speed up paging
-        if hasattr(self, 'system_group') and 'search' not in self.request.REQUEST:
-            self.object_list.count = lambda: counts[self.system_group]
+        #if hasattr(self, 'system_group') and 'search' not in self.request.REQUEST:
+        #    self.object_list.count = lambda: counts[self.system_group]
+        if not self.object_list:
+            self.fields = "Dummy"
+            counts[ContactGroup.TYPE_ALL]=0
+            counts[ContactGroup.TYPE_FAILED]=0
+            counts[ContactGroup.TYPE_BLOCKED]=0
+            
 
         context = super(ContactListView, self).get_context_data(**kwargs)
 
