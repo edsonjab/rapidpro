@@ -115,7 +115,6 @@ class MsgListView(OrgPermsMixin, SmartListView):
             queryset = queryset.filter(created_on__gte=last_90)
 
         return queryset
-
     def get_context_data(self, **kwargs):
         org = self.request.user.get_org()
         counts = SystemLabel.get_counts(org)
@@ -123,7 +122,22 @@ class MsgListView(OrgPermsMixin, SmartListView):
         # if there isn't a search filtering the queryset, we can replace the count function with a quick cache lookup to
         # speed up paging
         if hasattr(self, 'system_label') and 'search' not in self.request.REQUEST:
-            self.object_list.count = lambda: counts[self.system_label]
+            if counts:
+                self.object_list.count = lambda: counts[self.system_label]
+            else:
+                #Then the dictionary is empty
+                counts[SystemLabel.TYPE_INBOX] =  0
+                counts[SystemLabel.TYPE_FLOWS] = 0
+                counts[SystemLabel.TYPE_ARCHIVED] = 0
+                counts[SystemLabel.TYPE_OUTBOX] = 0
+                counts[SystemLabel.TYPE_SENT] = 0
+                counts[SystemLabel.TYPE_CALLS] = 0
+                counts[SystemLabel.TYPE_SCHEDULED] = 0
+                counts[SystemLabel.TYPE_FAILED] = 0
+                counts[SystemLabel.TYPE_OUTBOX] = 0
+                counts[SystemLabel.TYPE_CALLS] =0
+                counts[self.system_label] = 0
+                self.object_list.count = 0
 
         context = super(MsgListView, self).get_context_data(**kwargs)
 
@@ -139,7 +153,7 @@ class MsgListView(OrgPermsMixin, SmartListView):
         context['folders'] = folders
         context['labels'] = Label.get_hierarchy(org)
         context['has_labels'] = Label.label_objects.filter(org=org).exists()
-        context['has_messages'] = org.has_messages() or self.object_list.count() > 0
+        context['has_messages'] = org.has_messages() or self.object_list.count > 0
         context['send_form'] = SendMessageForm(self.request.user)
         return context
 
@@ -326,7 +340,7 @@ class BroadcastCRUDL(SmartCRUDL):
                 if not has_schedule:
                     self.post_save(broadcast)
                     super(BroadcastCRUDL.Send, self).form_valid(form)
-                    
+
             analytics.track(self.request.user.username, 'temba.broadcast_created',
                             dict(contacts=len(contacts), groups=len(groups), urns=len(urns)))
 

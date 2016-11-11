@@ -252,9 +252,11 @@ class Org(SmartModel):
         msg_counts = SystemLabel.get_counts(self, (SystemLabel.TYPE_INBOX,
                                                    SystemLabel.TYPE_OUTBOX,
                                                    SystemLabel.TYPE_CALLS))
-        return (msg_counts[SystemLabel.TYPE_INBOX] +
-                msg_counts[SystemLabel.TYPE_OUTBOX] +
-                msg_counts[SystemLabel.TYPE_CALLS]) > 0
+        total_messages = 0
+        total_messages += msg_counts[SystemLabel.TYPE_INBOX]  if SystemLabel.TYPE_INBOX  in msg_counts else 0
+        total_messages += msg_counts[SystemLabel.TYPE_OUTBOX] if SystemLabel.TYPE_OUTBOX in msg_counts else 0
+        total_messages += msg_counts[SystemLabel.TYPE_CALLS]  if SystemLabel.TYPE_CALLS  in msg_counts else 0
+        return (total_messages > 0)
 
     def update_caches(self, event, entity):
         """
