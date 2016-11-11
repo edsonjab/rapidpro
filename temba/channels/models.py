@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import absolute_import, unicode_literals
 
 import json
@@ -2679,12 +2681,11 @@ class ChannelLog(models.Model):
     @classmethod
     def write(cls, log):
         if log.is_error:
-            print(u"[%d] ERROR - %s %s \"%s\" %s \"%s\"" %
-                  (log.msg.pk, log.method, log.url, log.request, log.response_status, log.response))
+            print(u"[%d] ERROR - %s %s \"%s\" %s \"" %
+                  (log.msg.pk, log.method, log.url, log.request, log.response_status))
         else:
-            print(u"[%d] SENT - %s %s \"%s\" %s \"%s\"" %
-                  (log.msg.pk, log.method, log.url, log.request, log.response_status, log.response))
-
+            print(u"[%d] SENT - %s %s \"%s\" %s \"" %
+                  (log.msg.pk, log.method, log.url, log.response_status,log.request))
     @classmethod
     def log_exception(cls, msg, e):
         cls.write(ChannelLog.objects.create(channel_id=msg.channel,
